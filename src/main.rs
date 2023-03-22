@@ -111,7 +111,7 @@ fn spawn(
     // Don't forget the camera ;-)
     commands.spawn(Camera2dBundle::default());
 
-    let move_fps = 12.0;
+    let move_duration = Duration::from_millis(333);
     // Create an animation
     let player_animations = PlayerAnimations {
         idle: Animation(benimator::Animation::from_indices(
@@ -120,11 +120,11 @@ fn spawn(
         )),
         left_run: Animation(benimator::Animation::from_indices(
             0..=3,
-            FrameRate::from_total_duration(Duration::from_secs(1)),
+            FrameRate::from_total_duration(move_duration),
         )),
         right_run: Animation(benimator::Animation::from_indices(
             9..=12,
-            FrameRate::from_fps(move_fps),
+            FrameRate::from_total_duration(move_duration.clone()),
         )),
 
         hurt_idle: Animation(benimator::Animation::from_indices(
@@ -133,24 +133,24 @@ fn spawn(
         )),
         hurt_left_run: Animation(benimator::Animation::from_indices(
             4..=7,
-            FrameRate::from_fps(move_fps),
+            FrameRate::from_total_duration(move_duration.clone()),
         )),
         hurt_right_run: Animation(benimator::Animation::from_indices(
             13..=16,
-            FrameRate::from_fps(move_fps),
+            FrameRate::from_total_duration(move_duration.clone()),
         )),
 
         fly_idle: Animation(benimator::Animation::from_indices(
             36..=39,
-            FrameRate::from_fps(move_fps),
+            FrameRate::from_total_duration(move_duration.clone()),
         )),
         fly_left_run: Animation(benimator::Animation::from_indices(
             18..=21,
-            FrameRate::from_fps(move_fps),
+            FrameRate::from_total_duration(move_duration.clone()),
         )),
         fly_right_run: Animation(benimator::Animation::from_indices(
             27..=30,
-            FrameRate::from_fps(move_fps),
+            FrameRate::from_total_duration(move_duration.clone()),
         )),
 
         fly_hurt_idle: Animation(benimator::Animation::from_indices(
@@ -159,11 +159,11 @@ fn spawn(
         )),
         fly_hurt_left_run: Animation(benimator::Animation::from_indices(
             22..=25,
-            FrameRate::from_fps(move_fps),
+            FrameRate::from_total_duration(move_duration.clone()),
         )),
         fly_hurt_right_run: Animation(benimator::Animation::from_indices(
             28..=31,
-            FrameRate::from_fps(move_fps),
+            FrameRate::from_total_duration(move_duration.clone()),
         )),
     };
 
@@ -514,25 +514,36 @@ fn check_for_collisions(
                 Collision::Left => {
                     if player_velocity.x > 0.0 {
                         player_velocity.x = 0.0;
+                        player_transform.translation.x = collider_translation.x
+                            - (collider.size.x / 2.0)
+                            - (player_collider.size.x / 2.0);
                     }
                 }
                 Collision::Right => {
                     if player_velocity.x < 0.0 {
                         player_velocity.x = 0.0;
+                        player_transform.translation.x = collider_translation.x
+                            + (collider.size.x / 2.0)
+                            + (player_collider.size.x / 2.0);
                     }
                 }
                 Collision::Top => {
-                    player_velocity.y = 0.0;
-                    player_transform.translation.y = collider_translation.y
-                        + (collider.size.y / 2.0)
-                        + (player_collider.size.y / 2.0);
+                    if player_velocity.y < 0.0 {
+                        player_velocity.y = 0.0;
+                        player_transform.translation.y = collider_translation.y
+                            + (collider.size.y / 2.0)
+                            + (player_collider.size.y / 2.0);
+                    }
                 }
                 Collision::Bottom => {
-                    player_velocity.y = 0.0;
+                    if player_velocity.y > 0.0 {
+                        player_velocity.y = 0.0;
+                        player_transform.translation.y = collider_translation.y
+                            - (collider.size.y / 2.0)
+                            - (player_collider.size.y / 2.0);
+                    }
                 }
-                Collision::Inside => {
-                    player_velocity.y = 0.0;
-                }
+                Collision::Inside => {}
             }
         }
     }
