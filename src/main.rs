@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use benimator::FrameRate;
 use bevy::{
     prelude::*,
@@ -40,10 +42,25 @@ struct CollisionEvent;
 #[derive(Component)]
 struct BoxCollider {
     size: Vec2,
+    center: Vec2,
+    is_trigger: bool,
+}
+
+impl Default for BoxCollider {
+    fn default() -> Self {
+        BoxCollider {
+            size: Vec2::ZERO,
+            center: Vec2::ZERO,
+            is_trigger: false,
+        }
+    }
 }
 
 #[derive(Component)]
 struct NormalBrick;
+
+#[derive(Component)]
+struct NailsBrick {}
 
 fn main() {
     App::new()
@@ -56,11 +73,13 @@ fn main() {
                         width: 720.,
                         height: 1280.,
                         present_mode: PresentMode::AutoVsync,
+                        resizable: false,
                         ..default()
                     },
                     ..default()
                 }),
         )
+        .add_plugin(bevy_inspector_egui::quick::WorldInspectorPlugin)
         .add_startup_system(spawn)
         .add_event::<CollisionEvent>()
         .add_system(animate_system)
@@ -101,7 +120,7 @@ fn spawn(
         )),
         left_run: Animation(benimator::Animation::from_indices(
             0..=3,
-            FrameRate::from_fps(move_fps),
+            FrameRate::from_total_duration(Duration::from_secs(1)),
         )),
         right_run: Animation(benimator::Animation::from_indices(
             9..=12,
@@ -161,7 +180,7 @@ fn spawn(
                 None,
                 None,
             )),
-            transform: Transform::from_xyz(0.0, 200.0, 0.0),
+            transform: Transform::from_xyz(0.0, 200.0, 2.0),
             ..Default::default()
         })
         .insert(Player)
@@ -174,6 +193,7 @@ fn spawn(
         .insert(AnimationState::default())
         .insert(BoxCollider {
             size: Vec2::new(32.0, 32.0),
+            ..default()
         });
 
     commands
@@ -189,11 +209,88 @@ fn spawn(
             transform: Transform::from_xyz(0.0, -100.0, 0.0),
             ..Default::default()
         })
-        .insert(NormalBrick)
+        .insert(NormalBrick {})
         .insert(BoxCollider {
             size: Vec2::new(95.0, 16.0),
+            ..default()
         })
         .insert(Velocity(Vec2 { x: 0.0, y: 1.0 }));
+
+    commands
+        .spawn(SpriteSheetBundle {
+            texture_atlas: textures.add(TextureAtlas::from_grid(
+                asset_server.load("nails.png"),
+                Vec2::new(96.0, 31.0),
+                1,
+                1,
+                None,
+                None,
+            )),
+            transform: Transform::from_xyz(100.0, -200.0, 0.0),
+            ..Default::default()
+        })
+        .insert(NailsBrick {})
+        .insert(BoxCollider {
+            size: Vec2::new(96.0, 16.0),
+            center: Vec2::new(0.0, -15.0),
+            ..default()
+        })
+        .insert(Velocity(Vec2 { x: 0.0, y: 1.0 }));
+
+    commands
+        .spawn(SpriteSheetBundle {
+            texture_atlas: textures.add(TextureAtlas::from_grid(
+                asset_server.load("wall.png"),
+                Vec2::new(18.0, 400.0),
+                1,
+                1,
+                None,
+                None,
+            )),
+            transform: Transform::from_xyz(720.0 / 2.0 + -9.0, 1280.0 / 2.0 - 300.0, 0.0),
+            ..Default::default()
+        })
+        .insert(NailsBrick {})
+        .insert(BoxCollider {
+            size: Vec2::new(18.0, 400.0),
+            ..default()
+        });
+    commands
+        .spawn(SpriteSheetBundle {
+            texture_atlas: textures.add(TextureAtlas::from_grid(
+                asset_server.load("wall.png"),
+                Vec2::new(18.0, 400.0),
+                1,
+                1,
+                None,
+                None,
+            )),
+            transform: Transform::from_xyz(720.0 / 2.0 + -9.0, 1280.0 / 2.0 - 300.0 - 200.0, 0.0),
+            ..Default::default()
+        })
+        .insert(NailsBrick {})
+        .insert(BoxCollider {
+            size: Vec2::new(18.0, 400.0),
+            ..default()
+        });
+    // commands
+    //     .spawn(SpriteSheetBundle {
+    //         texture_atlas: textures.add(TextureAtlas::from_grid(
+    //             asset_server.load("wall.png"),
+    //             Vec2::new(18.0, 400.0),
+    //             1,
+    //             1,
+    //             None,
+    //             None,
+    //         )),
+    //         transform: Transform::from_xyz(720.0 / 2.0 + -9.0, (1280.0 / 2.0) - 400.0, 0.0),
+    //         ..Default::default()
+    //     })
+    //     .insert(NailsBrick {})
+    //     .insert(BoxCollider {
+    //         size: Vec2::new(18.0, 400.0),
+    //         ..default()
+    //     });
 }
 
 fn animate_system(
@@ -388,10 +485,7 @@ fn velocity_system(mut query: Query<(&mut Transform, &Velocity)>) {
 fn check_for_collisions(
     mut commands: Commands,
     mut player_query: Query<(&mut Transform, &BoxCollider, &mut Velocity), With<Player>>,
-    collider_query: Query<
-        (Entity, &Transform, &BoxCollider, Option<&NormalBrick>),
-        Without<Player>,
-    >,
+    collider_query: Query<(Entity, &Transform, &BoxCollider, Option<&NailsBrick>), Without<Player>>,
     mut collision_events: EventWriter<CollisionEvent>,
 ) {
     let (mut player_transform, player_collider, mut player_velocity) = player_query.single_mut();
@@ -399,37 +493,45 @@ fn check_for_collisions(
 
     player_velocity.y = -1.0;
 
-    for (_, transform, collider, maybe_normal_brick) in collider_query.iter() {
+    for (_, transform, collider, _) in collider_query.iter() {
+        if collider.is_trigger {
+            return;
+        }
+
+        let collider_translation = transform.translation + collider.center.extend(0.0);
+        let collider_size = collider.size * transform.scale.truncate();
         let collision = collide(
             player_transform.translation,
             player_size,
-            transform.translation,
-            collider.size,
+            collider_translation,
+            collider_size,
         );
 
         if let Some(collision) = collision {
             collision_events.send_default();
 
-            if let Some(_) = maybe_normal_brick {
-                match collision {
-                    Collision::Left => {
+            match collision {
+                Collision::Left => {
+                    if player_velocity.x > 0.0 {
                         player_velocity.x = 0.0;
                     }
-                    Collision::Right => {
+                }
+                Collision::Right => {
+                    if player_velocity.x < 0.0 {
                         player_velocity.x = 0.0;
                     }
-                    Collision::Top => {
-                        player_velocity.y = 0.0;
-                        player_transform.translation.y = transform.translation.y
-                            + (collider.size.y / 2.0)
-                            + (player_collider.size.y / 2.0);
-                    }
-                    Collision::Bottom => {
-                        player_velocity.y = 0.0;
-                    }
-                    Collision::Inside => {
-                        player_velocity.y = 0.0;
-                    }
+                }
+                Collision::Top => {
+                    player_velocity.y = 0.0;
+                    player_transform.translation.y = collider_translation.y
+                        + (collider.size.y / 2.0)
+                        + (player_collider.size.y / 2.0);
+                }
+                Collision::Bottom => {
+                    player_velocity.y = 0.0;
+                }
+                Collision::Inside => {
+                    player_velocity.y = 0.0;
                 }
             }
         }

@@ -6,10 +6,11 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-# bevy = { version =  "0.9.1" }
-bevy = { version =  "0.9.1", features = ["dynamic"] }
+bevy = { version =  "0.9.1" }
+# bevy = { version =  "0.9.1", features = ["dynamic"] }
 bevy_ggrs = { version = "0.11", features = ["wasm-bindgen"] }
 matchbox_socket = { version = "0.5", features = ["ggrs-socket"] }
 benimator = { version = "4.1.2" }
-seldom_state = { version = "0.4.0" }
-bevy_asset_loader = "0.14"
+bevy_asset_loader = { version = "0.14" }
+bevy_egui = { version = "0.19.0" }
+bevy-inspector-egui = { version = "0.17.0" }
