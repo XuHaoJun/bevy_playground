@@ -5,7 +5,7 @@ use bevy::{
     prelude::*,
     sprite::collide_aabb::{collide, Collision},
     time::FixedTimestep,
-    window::{CursorGrabMode, PresentMode},
+    window::PresentMode,
 };
 
 // Create the animation component
@@ -39,21 +39,10 @@ struct PlayerAnimations {
 #[derive(Default)]
 struct CollisionEvent;
 
-#[derive(Component)]
+#[derive(Component, Default)]
 struct BoxCollider {
     size: Vec2,
     center: Vec2,
-    is_trigger: bool,
-}
-
-impl Default for BoxCollider {
-    fn default() -> Self {
-        BoxCollider {
-            size: Vec2::ZERO,
-            center: Vec2::ZERO,
-            is_trigger: false,
-        }
-    }
 }
 
 #[derive(Component)]
@@ -61,6 +50,22 @@ struct NormalBrick;
 
 #[derive(Component)]
 struct NailsBrick {}
+
+#[derive(Component, Deref, DerefMut, Default)]
+struct NailsTrigger(BoxCollider);
+
+#[derive(Component)]
+struct DamagingTimer {
+    timer: Timer,
+}
+
+impl Default for DamagingTimer {
+    fn default() -> Self {
+        DamagingTimer {
+            timer: Timer::new(Duration::from_millis(333), TimerMode::Once),
+        }
+    }
+}
 
 fn main() {
     App::new()
@@ -87,21 +92,28 @@ fn main() {
         .add_system_set(
             SystemSet::new()
                 .with_run_criteria(FixedTimestep::step(1.0 / 60.0 as f64))
-                .with_system(userinput_system.before(player_controller_system))
+                .with_system(userinput_system)
                 .with_system(player_controller_system)
                 .with_system(velocity_system)
-                .with_system(enter_grounded_system.after(check_for_collisions))
-                .with_system(leave_grounded_system.after(check_for_collisions))
-                .with_system(enter_flying_system.after(check_for_collisions))
-                .with_system(leave_flying_system.after(check_for_collisions))
+                .with_system(enter_grounded_system.after(player_collision_system))
+                .with_system(leave_grounded_system.after(player_collision_system))
+                .with_system(enter_flying_system.after(player_collision_system))
+                .with_system(leave_flying_system.after(player_collision_system))
                 .with_system(
-                    check_for_collisions
+                    player_collision_system
                         .after(player_controller_system)
                         .after(velocity_system),
-                ),
+                )
+                .with_system(damaging_timer_system)
+                .with_system(player_nails_trigger_system.after(damaging_timer_system))
+                .with_system(enter_dead_system.after(player_nails_trigger_system)),
         )
         .run();
 }
+
+// fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
+//     let nail_sound : Handle<Audio> = asset_server.load("sounds/nail.mp3");
+// }
 
 fn spawn(
     mut commands: Commands,
@@ -115,8 +127,8 @@ fn spawn(
     // Create an animation
     let player_animations = PlayerAnimations {
         idle: Animation(benimator::Animation::from_indices(
-            8..=8,
-            FrameRate::from_fps(1.0),
+            [8],
+            FrameRate::from_total_duration(move_duration),
         )),
         left_run: Animation(benimator::Animation::from_indices(
             0..=3,
@@ -128,8 +140,8 @@ fn spawn(
         )),
 
         hurt_idle: Animation(benimator::Animation::from_indices(
-            17..=17,
-            FrameRate::from_fps(1.0),
+            [17, 8],
+            FrameRate::from_total_duration(move_duration.clone()),
         )),
         hurt_left_run: Animation(benimator::Animation::from_indices(
             4..=7,
@@ -155,7 +167,7 @@ fn spawn(
 
         fly_hurt_idle: Animation(benimator::Animation::from_indices(
             40..=43,
-            FrameRate::from_fps(1.0),
+            FrameRate::from_total_duration(move_duration.clone()),
         )),
         fly_hurt_left_run: Animation(benimator::Animation::from_indices(
             22..=25,
@@ -194,7 +206,8 @@ fn spawn(
         .insert(BoxCollider {
             size: Vec2::new(32.0, 32.0),
             ..default()
-        });
+        })
+        .insert(Health::new_player_health());
 
     commands
         .spawn(SpriteSheetBundle {
@@ -232,8 +245,15 @@ fn spawn(
         .insert(NailsBrick {})
         .insert(BoxCollider {
             size: Vec2::new(96.0, 16.0),
-            center: Vec2::new(0.0, -15.0),
+            center: Vec2::new(0.0, -15.5),
             ..default()
+        })
+        .insert(NailsTrigger {
+            0: BoxCollider {
+                size: Vec2::new(96.0, 16.0),
+                center: Vec2::new(0.0, 15.5),
+                ..default()
+            },
         })
         .insert(Velocity(Vec2 { x: 0.0, y: 1.0 }));
 
@@ -310,13 +330,40 @@ fn animate_system(
 struct Player;
 
 #[derive(Component)]
+struct Health {
+    value: i32,
+    max: i32,
+}
+
+impl Health {
+    fn new_player_health() -> Self {
+        Health { value: 10, max: 10 }
+    }
+
+    fn clamp(&self, input: i32) -> i32 {
+        let min = 0;
+        let max = self.max;
+        if input > max {
+            max
+        } else if input < min {
+            min
+        } else {
+            input
+        }
+    }
+}
+
+#[derive(Component)]
 struct Grounded {}
 
 #[derive(Component)]
 struct Flying {}
 
 #[derive(Component)]
-struct Damaged {}
+struct Damaging {}
+
+#[derive(Component)]
+struct Dead {}
 
 #[derive(Component, Deref, DerefMut)]
 struct Velocity(Vec2);
@@ -354,7 +401,7 @@ fn animate_player_system(
             &Userinput,
             &PlayerAnimations,
             Option<&Flying>,
-            Option<&Damaged>,
+            Option<&Damaging>,
         ),
         With<Player>,
     >,
@@ -367,7 +414,7 @@ fn animate_player_system(
             _ => false,
         };
 
-        let is_damaged = match damaged {
+        let is_damaging = match damaged {
             Some(_) => true,
             _ => false,
         };
@@ -377,7 +424,7 @@ fn animate_player_system(
             animations.clone(),
             userinput.move_accelection,
             is_flying,
-            is_damaged,
+            is_damaging,
         );
         if next_animation != *animation {
             animation_state.reset();
@@ -391,12 +438,12 @@ fn get_next_animation(
     animations: PlayerAnimations,
     direction: Vec2,
     is_flying: bool,
-    is_damaged: bool,
+    is_damaging: bool,
 ) -> Animation {
     if direction.x > 0.0 {
-        let next_animation = if is_damaged && is_flying {
+        let next_animation = if is_damaging && is_flying {
             &animations.fly_hurt_right_run
-        } else if is_damaged {
+        } else if is_damaging {
             &animations.hurt_right_run
         } else if is_flying {
             &animations.fly_right_run
@@ -406,9 +453,9 @@ fn get_next_animation(
         return next_animation.clone();
     }
     if direction.x < 0.0 {
-        let next_animation = if is_damaged && is_flying {
+        let next_animation = if is_damaging && is_flying {
             &animations.fly_hurt_left_run
-        } else if is_damaged {
+        } else if is_damaging {
             &animations.hurt_left_run
         } else if is_flying {
             &animations.fly_left_run
@@ -418,9 +465,9 @@ fn get_next_animation(
         return next_animation.clone();
     }
     if direction == Vec2::ZERO {
-        let next_animation = if is_damaged && is_flying {
+        let next_animation = if is_damaging && is_flying {
             &animations.fly_hurt_idle
-        } else if is_damaged {
+        } else if is_damaging {
             &animations.hurt_idle
         } else if is_flying {
             &animations.fly_idle
@@ -482,69 +529,138 @@ fn velocity_system(mut query: Query<(&mut Transform, &Velocity)>) {
     }
 }
 
-fn check_for_collisions(
-    mut commands: Commands,
+fn player_collision_system(
     mut player_query: Query<(&mut Transform, &BoxCollider, &mut Velocity), With<Player>>,
-    collider_query: Query<(Entity, &Transform, &BoxCollider, Option<&NailsBrick>), Without<Player>>,
+    collider_query: Query<(&Transform, &BoxCollider), Without<Player>>,
     mut collision_events: EventWriter<CollisionEvent>,
 ) {
-    let (mut player_transform, player_collider, mut player_velocity) = player_query.single_mut();
-    let player_size = player_collider.size;
+    for (mut player_transform, player_collider, mut player_velocity) in player_query.iter_mut() {
+        player_velocity.y = -1.0;
 
-    player_velocity.y = -1.0;
+        let player_translation =
+            get_collider_translation(player_transform.as_ref(), player_collider);
+        let player_size = get_collider_size(player_transform.as_ref(), player_collider);
 
-    for (_, transform, collider, _) in collider_query.iter() {
-        if collider.is_trigger {
-            return;
-        }
+        for (transform, collider) in collider_query.iter() {
+            let collider_translation = get_collider_translation(transform, collider);
+            let collider_size = get_collider_size(transform, collider);
 
-        let collider_translation = transform.translation + collider.center.extend(0.0);
-        let collider_size = collider.size * transform.scale.truncate();
-        let collision = collide(
-            player_transform.translation,
-            player_size,
-            collider_translation,
-            collider_size,
-        );
+            let collision = collide(
+                player_translation,
+                player_size,
+                collider_translation,
+                collider_size,
+            );
 
-        if let Some(collision) = collision {
-            collision_events.send_default();
+            if let Some(collision) = collision {
+                collision_events.send_default();
 
-            match collision {
-                Collision::Left => {
-                    if player_velocity.x > 0.0 {
-                        player_velocity.x = 0.0;
-                        player_transform.translation.x = collider_translation.x
-                            - (collider.size.x / 2.0)
-                            - (player_collider.size.x / 2.0);
+                match collision {
+                    Collision::Left => {
+                        if player_velocity.x > 0.0 {
+                            player_velocity.x = 0.0;
+                            player_transform.translation.x = collider_translation.x
+                                - (collider.size.x / 2.0)
+                                - (player_collider.size.x / 2.0);
+                        }
                     }
-                }
-                Collision::Right => {
-                    if player_velocity.x < 0.0 {
-                        player_velocity.x = 0.0;
-                        player_transform.translation.x = collider_translation.x
-                            + (collider.size.x / 2.0)
-                            + (player_collider.size.x / 2.0);
+                    Collision::Right => {
+                        if player_velocity.x < 0.0 {
+                            player_velocity.x = 0.0;
+                            player_transform.translation.x = collider_translation.x
+                                + (collider.size.x / 2.0)
+                                + (player_collider.size.x / 2.0);
+                        }
                     }
-                }
-                Collision::Top => {
-                    if player_velocity.y < 0.0 {
-                        player_velocity.y = 0.0;
-                        player_transform.translation.y = collider_translation.y
-                            + (collider.size.y / 2.0)
-                            + (player_collider.size.y / 2.0);
+                    Collision::Top => {
+                        if player_velocity.y < 0.0 {
+                            player_velocity.y = 0.0;
+                            player_transform.translation.y = collider_translation.y
+                                + (collider.size.y / 2.0)
+                                + (player_collider.size.y / 2.0);
+                        }
                     }
-                }
-                Collision::Bottom => {
-                    if player_velocity.y > 0.0 {
-                        player_velocity.y = 0.0;
-                        player_transform.translation.y = collider_translation.y
-                            - (collider.size.y / 2.0)
-                            - (player_collider.size.y / 2.0);
+                    Collision::Bottom => {
+                        if player_velocity.y > 0.0 {
+                            player_velocity.y = 0.0;
+                            player_transform.translation.y = collider_translation.y
+                                - (collider.size.y / 2.0)
+                                - (player_collider.size.y / 2.0);
+                        }
                     }
+                    Collision::Inside => {}
                 }
-                Collision::Inside => {}
             }
+        }
+    }
+}
+
+fn get_collider_translation(transform: &Transform, collider: &BoxCollider) -> Vec3 {
+    transform.translation + collider.center.extend(0.0)
+}
+
+fn get_collider_size(transform: &Transform, collider: &BoxCollider) -> Vec2 {
+    collider.size * transform.scale.truncate()
+}
+
+fn enter_dead_system(
+    mut commands: Commands,
+    health_query: Query<(Entity, &Health), Without<Dead>>,
+) {
+    for (entity, health) in health_query.iter() {
+        if health.value <= 0 {
+            commands.entity(entity).insert(Dead {});
+        }
+    }
+}
+
+fn player_nails_trigger_system(
+    mut commands: Commands,
+    mut player_query: Query<
+        (Entity, &Transform, &BoxCollider, &mut Health),
+        (With<Player>, Without<Damaging>, Without<Dead>),
+    >,
+    collider_query: Query<(&Transform, &NailsTrigger)>,
+) {
+    for (player_entity, player_transform, player_collider, mut player_health) in
+        player_query.iter_mut()
+    {
+        let player_translation = get_collider_translation(player_transform, player_collider);
+        let player_size = get_collider_size(player_transform, player_collider);
+
+        for (transform, collider) in collider_query.iter() {
+            let collider_translation = get_collider_translation(transform, collider);
+            let collider_size = get_collider_size(transform, collider);
+
+            let collision = collide(
+                player_translation,
+                player_size,
+                collider_translation,
+                collider_size,
+            );
+
+            if let Some(_) = collision {
+                player_health.value = player_health.clamp(player_health.value - 1);
+                commands
+                    .entity(player_entity)
+                    .insert(Damaging {})
+                    .insert(DamagingTimer::default());
+            }
+        }
+    }
+}
+
+fn damaging_timer_system(
+    mut commands: Commands,
+    time: Res<Time>,
+    mut timer_query: Query<(Entity, &mut DamagingTimer), With<Damaging>>,
+) {
+    for (entity, mut cooldown) in timer_query.iter_mut() {
+        cooldown.timer.tick(time.delta());
+        if cooldown.timer.finished() {
+            commands
+                .entity(entity)
+                .remove::<(Damaging, DamagingTimer)>();
         }
     }
 }
