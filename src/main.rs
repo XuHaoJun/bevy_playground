@@ -1,5 +1,3 @@
-use std::time::Duration;
-
 use benimator::FrameRate;
 use bevy::{
     prelude::*,
@@ -7,6 +5,8 @@ use bevy::{
     time::FixedTimestep,
     window::PresentMode,
 };
+use bevy_kira_audio::prelude::*;
+use std::time::Duration;
 
 // Create the animation component
 // Note: you may make the animation an asset instead of a component
@@ -55,6 +55,11 @@ struct NailsBrick {}
 struct NailsTrigger(BoxCollider);
 
 #[derive(Component)]
+struct LastCollisions {
+    entities: Vec<Entity>,
+}
+
+#[derive(Component)]
 struct DamagingTimer {
     timer: Timer,
 }
@@ -62,10 +67,27 @@ struct DamagingTimer {
 impl Default for DamagingTimer {
     fn default() -> Self {
         DamagingTimer {
-            timer: Timer::new(Duration::from_millis(333), TimerMode::Once),
+            timer: Timer::new(Duration::from_millis(500), TimerMode::Once),
         }
     }
 }
+#[derive(Resource, Deref, DerefMut)]
+struct NormalHitSound(Handle<AudioSource>);
+
+#[derive(Resource, Deref, DerefMut)]
+struct NailHitSound(Handle<AudioSource>);
+
+#[derive(Resource, Deref, DerefMut)]
+struct FakeHitSound(Handle<AudioSource>);
+
+#[derive(Resource, Deref, DerefMut)]
+struct DieSound(Handle<AudioSource>);
+
+#[derive(Resource, Deref, DerefMut)]
+struct SpringHitSound(Handle<AudioSource>);
+
+#[derive(Resource, Deref, DerefMut)]
+struct ConveyorHitSound(Handle<AudioSource>);
 
 fn main() {
     App::new()
@@ -84,7 +106,9 @@ fn main() {
                     ..default()
                 }),
         )
+        .add_plugin(AudioPlugin)
         .add_plugin(bevy_inspector_egui::quick::WorldInspectorPlugin)
+        .add_startup_system(setup_audio_resources.before(spawn))
         .add_startup_system(spawn)
         .add_event::<CollisionEvent>()
         .add_system(animate_system)
@@ -111,9 +135,21 @@ fn main() {
         .run();
 }
 
-// fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
-//     let nail_sound : Handle<Audio> = asset_server.load("sounds/nail.mp3");
-// }
+fn setup_audio_resources(mut commands: Commands, asset_server: Res<AssetServer>) {
+    let dir = "sounds";
+    commands.insert_resource(NormalHitSound(
+        asset_server.load(format!("{dir}/normal.ogg")),
+    ));
+    commands.insert_resource(NailHitSound(asset_server.load(format!("{dir}/nail.ogg"))));
+    commands.insert_resource(FakeHitSound(asset_server.load(format!("{dir}/fake.ogg"))));
+    commands.insert_resource(DieSound(asset_server.load(format!("{dir}/die.ogg"))));
+    commands.insert_resource(SpringHitSound(
+        asset_server.load(format!("{dir}/spring.ogg")),
+    ));
+    commands.insert_resource(ConveyorHitSound(
+        asset_server.load(format!("{dir}/conveyor.ogg")),
+    ));
+}
 
 fn spawn(
     mut commands: Commands,
@@ -206,6 +242,9 @@ fn spawn(
         .insert(BoxCollider {
             size: Vec2::new(32.0, 32.0),
             ..default()
+        })
+        .insert(LastCollisions {
+            entities: Vec::new(),
         })
         .insert(Health::new_player_health());
 
@@ -530,18 +569,35 @@ fn velocity_system(mut query: Query<(&mut Transform, &Velocity)>) {
 }
 
 fn player_collision_system(
-    mut player_query: Query<(&mut Transform, &BoxCollider, &mut Velocity), With<Player>>,
-    collider_query: Query<(&Transform, &BoxCollider), Without<Player>>,
+    mut player_query: Query<
+        (
+            &mut Transform,
+            &BoxCollider,
+            &mut Velocity,
+            &mut LastCollisions,
+        ),
+        With<Player>,
+    >,
+    collider_query: Query<
+        (Entity, &Transform, &BoxCollider, Option<&NormalBrick>),
+        Without<Player>,
+    >,
     mut collision_events: EventWriter<CollisionEvent>,
+    normal_hit_sound: Res<NormalHitSound>,
+    audio: Res<Audio>,
 ) {
-    for (mut player_transform, player_collider, mut player_velocity) in player_query.iter_mut() {
+    for (mut player_transform, player_collider, mut player_velocity, mut player_last_collisions) in
+        player_query.iter_mut()
+    {
         player_velocity.y = -1.0;
 
         let player_translation =
             get_collider_translation(player_transform.as_ref(), player_collider);
         let player_size = get_collider_size(player_transform.as_ref(), player_collider);
 
-        for (transform, collider) in collider_query.iter() {
+        let mut collision_entities: Vec<Entity> = Vec::new();
+
+        for (other_entity, transform, collider, normal_brick) in collider_query.iter() {
             let collider_translation = get_collider_translation(transform, collider);
             let collider_size = get_collider_size(transform, collider);
 
@@ -553,6 +609,8 @@ fn player_collision_system(
             );
 
             if let Some(collision) = collision {
+                collision_entities.push(other_entity);
+
                 collision_events.send_default();
 
                 match collision {
@@ -590,8 +648,31 @@ fn player_collision_system(
                     }
                     Collision::Inside => {}
                 }
+
+                if let Some(_) = normal_brick {
+                    match collision {
+                        Collision::Top => {
+                            let should_play: bool = !{
+                                let mut found = false;
+                                for e in player_last_collisions.entities.clone().into_iter() {
+                                    if e == other_entity {
+                                        found = true;
+                                        break;
+                                    }
+                                }
+                                found
+                            };
+                            if should_play {
+                                audio.play(normal_hit_sound.clone());
+                            }
+                        }
+                        _ => {}
+                    }
+                }
             }
         }
+
+        player_last_collisions.entities = collision_entities;
     }
 }
 
@@ -621,6 +702,8 @@ fn player_nails_trigger_system(
         (With<Player>, Without<Damaging>, Without<Dead>),
     >,
     collider_query: Query<(&Transform, &NailsTrigger)>,
+    nail_hit_sound: Res<NailHitSound>,
+    audio: Res<Audio>,
 ) {
     for (player_entity, player_transform, player_collider, mut player_health) in
         player_query.iter_mut()
@@ -643,8 +726,9 @@ fn player_nails_trigger_system(
                 player_health.value = player_health.clamp(player_health.value - 1);
                 commands
                     .entity(player_entity)
-                    .insert(Damaging {})
-                    .insert(DamagingTimer::default());
+                    .insert(DamagingTimer::default())
+                    .insert(Damaging {});
+                audio.play(nail_hit_sound.clone());
             }
         }
     }
