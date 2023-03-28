@@ -68,7 +68,7 @@ impl Default for DamagingTimer {
     fn default() -> Self {
         DamagingTimer {
             timer: Timer::new(
-                Duration::from_secs_f64(PHYSICS_DELTA * 40.0),
+                Duration::from_secs_f64(PHYSICS_DELTA * 75.0),
                 TimerMode::Once,
             ),
         }
@@ -667,17 +667,11 @@ fn player_collision_system(
                 if let Some(_) = normal_brick {
                     match collision {
                         Collision::Top => {
-                            let should_play: bool = !{
-                                let mut found = false;
-                                for e in player_last_collisions.entities.clone().into_iter() {
-                                    if e == other_entity {
-                                        found = true;
-                                        break;
-                                    }
-                                }
-                                found
-                            };
-                            if should_play {
+                            let is_trigger_enter = !player_last_collisions
+                                .entities
+                                .iter()
+                                .any(|x| *x == other_entity);
+                            if is_trigger_enter {
                                 audio.play(normal_hit_sound.clone());
                             }
                         }
