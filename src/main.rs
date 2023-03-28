@@ -59,7 +59,7 @@ struct LastCollisions {
     entities: Vec<Entity>,
 }
 
-#[derive(Component)]
+#[derive(Component, Reflect)]
 struct DamagingTimer {
     timer: Timer,
 }
@@ -67,7 +67,10 @@ struct DamagingTimer {
 impl Default for DamagingTimer {
     fn default() -> Self {
         DamagingTimer {
-            timer: Timer::new(Duration::from_millis(500), TimerMode::Once),
+            timer: Timer::new(
+                Duration::from_secs_f64(PHYSICS_DELTA * 40.0),
+                TimerMode::Once,
+            ),
         }
     }
 }
@@ -89,6 +92,8 @@ struct SpringHitSound(Handle<AudioSource>);
 #[derive(Resource, Deref, DerefMut)]
 struct ConveyorHitSound(Handle<AudioSource>);
 
+const PHYSICS_DELTA: f64 = 1.0 / 60.0;
+
 fn main() {
     App::new()
         .add_plugins(
@@ -106,16 +111,18 @@ fn main() {
                     ..default()
                 }),
         )
+        .register_type::<DamagingTimer>()
         .add_plugin(AudioPlugin)
         .add_plugin(bevy_inspector_egui::quick::WorldInspectorPlugin)
-        .add_startup_system(setup_audio_resources.before(spawn))
+        .add_startup_system(setup_audio_resources)
+        .add_startup_system(play_background_sound)
         .add_startup_system(spawn)
         .add_event::<CollisionEvent>()
         .add_system(animate_system)
         .add_system(animate_player_system.before(animate_system))
         .add_system_set(
             SystemSet::new()
-                .with_run_criteria(FixedTimestep::step(1.0 / 60.0 as f64))
+                .with_run_criteria(FixedTimestep::step(PHYSICS_DELTA))
                 .with_system(userinput_system)
                 .with_system(player_controller_system)
                 .with_system(velocity_system)
@@ -149,6 +156,14 @@ fn setup_audio_resources(mut commands: Commands, asset_server: Res<AssetServer>)
     commands.insert_resource(ConveyorHitSound(
         asset_server.load(format!("{dir}/conveyor.ogg")),
     ));
+}
+
+fn play_background_sound(asset_server: Res<AssetServer>, audio: Res<Audio>) {
+    let dir = "sounds/background";
+    audio
+        .play(asset_server.load(format!("{dir}/run_amok.ogg")))
+        .with_volume(0.2)
+        .looped();
 }
 
 fn spawn(
@@ -736,11 +751,10 @@ fn player_nails_trigger_system(
 
 fn damaging_timer_system(
     mut commands: Commands,
-    time: Res<Time>,
     mut timer_query: Query<(Entity, &mut DamagingTimer), With<Damaging>>,
 ) {
     for (entity, mut cooldown) in timer_query.iter_mut() {
-        cooldown.timer.tick(time.delta());
+        cooldown.timer.tick(Duration::from_secs_f64(PHYSICS_DELTA));
         if cooldown.timer.finished() {
             commands
                 .entity(entity)
