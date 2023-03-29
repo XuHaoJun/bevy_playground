@@ -39,6 +39,15 @@ struct PlayerAnimations {
 #[derive(Default)]
 struct CollisionEvent;
 
+struct TriggerEnterEvent {
+    myself: Entity,
+    other: Entity,
+    collision: Collision,
+}
+
+#[derive(Deref, DerefMut)]
+struct FakeBrickTriggerEnterEvent(TriggerEnterEvent);
+
 #[derive(Component, Default)]
 struct BoxCollider {
     size: Vec2,
@@ -53,6 +62,42 @@ struct NailsBrick {}
 
 #[derive(Component, Deref, DerefMut, Default)]
 struct NailsTrigger(BoxCollider);
+
+#[derive(Component)]
+struct FakeBrick {}
+
+const FAKE_BRICK_FLIPING_SECONDS: f64 = PHYSICS_DELTA * 30.0;
+
+#[derive(Component)]
+struct FakeBrickFliping {}
+
+#[derive(Component, Clone)]
+struct FakeBrickAnimations {
+    idle: Animation,
+    flip: Animation,
+}
+
+#[derive(Component, Deref, DerefMut)]
+struct FakeBrickBeforeFlipDelay(Timer);
+
+impl Default for FakeBrickBeforeFlipDelay {
+    fn default() -> Self {
+        FakeBrickBeforeFlipDelay {
+            0: Timer::new(
+                Duration::from_secs_f64(PHYSICS_DELTA * 10.0),
+                TimerMode::Once,
+            ),
+        }
+    }
+}
+
+fn new_fake_brick_box_collider() -> BoxCollider {
+    BoxCollider {
+        size: Vec2::new(97.0, 18.0),
+        center: Vec2::new(0.0, 0.0),
+        ..default()
+    }
+}
 
 #[derive(Component)]
 struct LastCollisions {
@@ -118,8 +163,11 @@ fn main() {
         .add_startup_system(play_background_sound)
         .add_startup_system(spawn)
         .add_event::<CollisionEvent>()
+        .add_event::<TriggerEnterEvent>()
+        .add_event::<FakeBrickTriggerEnterEvent>()
         .add_system(animate_system)
         .add_system(animate_player_system.before(animate_system))
+        .add_system(animate_fake_brick_system.before(animate_system))
         .add_system_set(
             SystemSet::new()
                 .with_run_criteria(FixedTimestep::step(PHYSICS_DELTA))
@@ -135,6 +183,8 @@ fn main() {
                         .after(player_controller_system)
                         .after(velocity_system),
                 )
+                .with_system(fake_brick_trigger_enter_system.after(player_collision_system))
+                .with_system(fake_brick_flip_system)
                 .with_system(damaging_timer_system)
                 .with_system(player_nails_trigger_system.after(damaging_timer_system))
                 .with_system(enter_dead_system.after(player_nails_trigger_system)),
@@ -174,7 +224,7 @@ fn spawn(
     // Don't forget the camera ;-)
     commands.spawn(Camera2dBundle::default());
 
-    let move_duration = Duration::from_millis(333);
+    let move_duration = Duration::from_secs_f64(PHYSICS_DELTA * 20.0);
     // Create an animation
     let player_animations = PlayerAnimations {
         idle: Animation(benimator::Animation::from_indices(
@@ -249,7 +299,7 @@ fn spawn(
         .insert(Player)
         .insert(Velocity(Vec2 { x: 0.0, y: -1.0 }))
         .insert(player_animations)
-        .insert(idle_animation.clone())
+        .insert(idle_animation)
         .insert(Userinput {
             move_accelection: Vec2::ZERO,
         })
@@ -309,6 +359,40 @@ fn spawn(
                 ..default()
             },
         })
+        .insert(Velocity(Vec2 { x: 0.0, y: 1.0 }));
+
+    let fake_brick_animations = FakeBrickAnimations {
+        idle: Animation(benimator::Animation::from_indices(
+            0..=0,
+            FrameRate::from_total_duration(Duration::from_secs_f64(PHYSICS_DELTA * 60.0)),
+        )),
+        flip: Animation(
+            benimator::Animation::from_indices(
+                0..=5,
+                FrameRate::from_total_duration(Duration::from_secs_f64(FAKE_BRICK_FLIPING_SECONDS)),
+            )
+            .once(),
+        ),
+    };
+    let fake_brick_idle_animation = fake_brick_animations.idle.clone();
+    commands
+        .spawn(SpriteSheetBundle {
+            texture_atlas: textures.add(TextureAtlas::from_grid(
+                asset_server.load("fake.png"),
+                Vec2::new(97.0, 36.0),
+                1,
+                6,
+                None,
+                None,
+            )),
+            transform: Transform::from_xyz(-100.0, -200.0, 0.0),
+            ..Default::default()
+        })
+        .insert(FakeBrick {})
+        .insert(fake_brick_animations)
+        .insert(fake_brick_idle_animation)
+        .insert(AnimationState::default())
+        .insert(new_fake_brick_box_collider())
         .insert(Velocity(Vec2 { x: 0.0, y: 1.0 }));
 
     commands
@@ -586,6 +670,7 @@ fn velocity_system(mut query: Query<(&mut Transform, &Velocity)>) {
 fn player_collision_system(
     mut player_query: Query<
         (
+            Entity,
             &mut Transform,
             &BoxCollider,
             &mut Velocity,
@@ -594,15 +679,28 @@ fn player_collision_system(
         With<Player>,
     >,
     collider_query: Query<
-        (Entity, &Transform, &BoxCollider, Option<&NormalBrick>),
+        (
+            Entity,
+            &Transform,
+            &BoxCollider,
+            Option<&NormalBrick>,
+            Option<&FakeBrick>,
+            Option<&LastCollisions>,
+        ),
         Without<Player>,
     >,
     mut collision_events: EventWriter<CollisionEvent>,
+    mut fake_brick_trigger_enter_events: EventWriter<FakeBrickTriggerEnterEvent>,
     normal_hit_sound: Res<NormalHitSound>,
     audio: Res<Audio>,
 ) {
-    for (mut player_transform, player_collider, mut player_velocity, mut player_last_collisions) in
-        player_query.iter_mut()
+    for (
+        player_entity,
+        mut player_transform,
+        player_collider,
+        mut player_velocity,
+        mut player_last_collisions,
+    ) in player_query.iter_mut()
     {
         player_velocity.y = -1.0;
 
@@ -612,7 +710,15 @@ fn player_collision_system(
 
         let mut collision_entities: Vec<Entity> = Vec::new();
 
-        for (other_entity, transform, collider, normal_brick) in collider_query.iter() {
+        for (
+            other_entity,
+            transform,
+            collider,
+            normal_brick_opt,
+            fake_brick_opt,
+            other_last_collisions_opt,
+        ) in collider_query.iter()
+        {
             let collider_translation = get_collider_translation(transform, collider);
             let collider_size = get_collider_size(transform, collider);
 
@@ -664,18 +770,31 @@ fn player_collision_system(
                     Collision::Inside => {}
                 }
 
-                if let Some(_) = normal_brick {
+                let is_trigger_enter = !player_last_collisions
+                    .entities
+                    .iter()
+                    .any(|x| *x == other_entity);
+
+                if let Some(_) = normal_brick_opt {
                     match collision {
                         Collision::Top => {
-                            let is_trigger_enter = !player_last_collisions
-                                .entities
-                                .iter()
-                                .any(|x| *x == other_entity);
                             if is_trigger_enter {
                                 audio.play(normal_hit_sound.clone());
                             }
                         }
                         _ => {}
+                    }
+                }
+
+                if let Some(_) = fake_brick_opt {
+                    if is_trigger_enter {
+                        fake_brick_trigger_enter_events.send(FakeBrickTriggerEnterEvent {
+                            0: TriggerEnterEvent {
+                                myself: other_entity,
+                                other: player_entity,
+                                collision,
+                            },
+                        });
                     }
                 }
             }
@@ -753,6 +872,91 @@ fn damaging_timer_system(
             commands
                 .entity(entity)
                 .remove::<(Damaging, DamagingTimer)>();
+        }
+    }
+}
+
+fn animate_fake_brick_system(
+    mut commands: Commands,
+    mut fake_brick_query: Query<
+        (
+            Entity,
+            &mut Animation,
+            &mut AnimationState,
+            &FakeBrickAnimations,
+            Option<&FakeBrickFliping>,
+        ),
+        With<FakeBrick>,
+    >,
+) {
+    for (entity, mut animation, mut animation_state, animations, fliping_opt) in
+        fake_brick_query.iter_mut()
+    {
+        let is_fliping = match fliping_opt {
+            Some(_) => true,
+            _ => false,
+        };
+
+        let next_animation = {
+            if is_fliping {
+                animations.flip.clone()
+            } else {
+                animations.idle.clone()
+            }
+        };
+        if *animation != next_animation {
+            animation_state.reset();
+            animation.clone_from(&next_animation);
+        }
+
+        if is_fliping && animation_state.is_ended() {
+            commands
+                .entity(entity)
+                .remove::<FakeBrickFliping>()
+                .insert(new_fake_brick_box_collider());
+        }
+    }
+}
+
+fn fake_brick_trigger_enter_system(
+    mut trigger_enter_events: EventReader<FakeBrickTriggerEnterEvent>,
+    mut commands: Commands,
+    fake_brick_query: Query<
+        &FakeBrick,
+        (Without<FakeBrickFliping>, Without<FakeBrickBeforeFlipDelay>),
+    >,
+) {
+    for event in trigger_enter_events.iter() {
+        match event.collision {
+            Collision::Top => {
+                let fake_brick_entity = event.myself;
+                if let Ok(_) = fake_brick_query.get(fake_brick_entity) {
+                    commands
+                        .entity(fake_brick_entity)
+                        .insert(FakeBrickBeforeFlipDelay::default());
+                }
+            }
+            _ => {}
+        }
+    }
+    trigger_enter_events.clear();
+}
+
+fn fake_brick_flip_system(
+    mut commands: Commands,
+    mut fake_brick_query: Query<(Entity, &mut FakeBrickBeforeFlipDelay), With<FakeBrick>>,
+    fake_hit_sound: Res<FakeHitSound>,
+    audio: Res<Audio>,
+) {
+    for (entity, mut delay) in fake_brick_query.iter_mut() {
+        delay.tick(Duration::from_secs_f64(PHYSICS_DELTA));
+        if delay.finished() {
+            audio.play(fake_hit_sound.clone());
+            commands
+                .entity(entity)
+                .remove::<FakeBrickBeforeFlipDelay>()
+                .remove::<BoxCollider>()
+                .insert(FakeBrickFliping {});
         }
     }
 }
