@@ -1,0 +1,1 @@
+pub const PHYSICS_DELTA: f64 = 1.0 / 60.0;
