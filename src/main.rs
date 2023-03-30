@@ -65,7 +65,6 @@ fn main() {
                             max_width: 720.0,
                         },
                         present_mode: PresentMode::AutoVsync,
-                        fit_canvas_to_parent: true,
                         ..default()
                     },
                     ..default()

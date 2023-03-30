@@ -18,8 +18,8 @@ pub fn player_nails_hitbox_system(
         (With<Player>, Without<Damaging>, Without<Dead>),
     >,
     collider_query: Query<(&Transform, &NailsBrickHitbox)>,
-    nails_brick_assets: Res<NailsBrickAssets>,
-    audio: Res<Audio>,
+    // nails_brick_assets: Res<NailsBrickAssets>,
+    // audio: Res<Audio>,
 ) {
     for (player_entity, player_transform, player_collider, mut player_health) in
         player_query.iter_mut()
@@ -44,7 +44,7 @@ pub fn player_nails_hitbox_system(
                     .entity(player_entity)
                     .insert(DamagingTimer::default())
                     .insert(Damaging {});
-                audio.play(nails_brick_assets.hit.clone());
+                // audio.play(nails_brick_assets.hit.clone());
             }
         }
     }
