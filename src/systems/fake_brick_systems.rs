@@ -86,18 +86,18 @@ pub fn fake_brick_trigger_enter_system(
 pub fn fake_brick_flip_system(
     mut commands: Commands,
     mut fake_brick_query: Query<(Entity, &mut FakeBrickBeforeFlipDelay), With<FakeBrick>>,
-    // fake_brick_assets: Res<FakeBrickAssets>,
-    // audio: Res<Audio>,
+    fake_brick_assets: Res<FakeBrickAssets>,
+    audio: Res<Audio>,
 ) {
     for (entity, mut delay) in fake_brick_query.iter_mut() {
         delay.tick(Duration::from_secs_f64(PHYSICS_DELTA));
         if delay.finished() {
-            // audio.play(fake_brick_assets.hit.clone());
             commands
                 .entity(entity)
                 .remove::<FakeBrickBeforeFlipDelay>()
                 .remove::<BoxCollider>()
                 .insert(FakeBrickFliping {});
+            audio.play(fake_brick_assets.hit.clone());
         }
     }
 }

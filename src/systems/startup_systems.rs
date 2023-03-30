@@ -40,18 +40,18 @@ pub fn spawn_bricks(
     commands.spawn(FakeBrickBundle::new(fake1_transform, &fake_brick_assets));
 }
 
-pub fn spawn_walls(mut commands: Commands, windows: Res<Windows>, wall_assets: Res<WallAssets>) {
-    let window = windows.primary();
-    let height = window.height();
-    let width = window.width();
+// pub fn spawn_walls(mut commands: Commands, windows: Res<Windows>, wall_assets: Res<WallAssets>) {
+//     let window = windows.primary();
+//     let height = window.height();
+//     let width = window.width();
 
-    let transform = Transform::from_xyz(
-        width / 2.0 + -(WALL_WIDTH / 2.0),
-        height / 2.0 - (WALL_HEIGHT / 2.0),
-        0.0,
-    );
-    commands.spawn(WallBundle::new(transform, &wall_assets));
-}
+//     let transform = Transform::from_xyz(
+//         width / 2.0 + -(WALL_WIDTH / 2.0),
+//         height / 2.0 - (WALL_HEIGHT / 2.0),
+//         0.0,
+//     );
+//     commands.spawn(WallBundle::new(transform, &wall_assets));
+// }
 
 pub fn play_background_sound(asset_server: Res<AssetServer>, audio: Res<Audio>) {
     let dir = "sounds/background";

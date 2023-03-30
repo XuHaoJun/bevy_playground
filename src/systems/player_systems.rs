@@ -118,6 +118,17 @@ pub fn enter_grounded_system(
     }
 }
 
+pub fn leave_grounded_system(
+    mut commands: Commands,
+    grounded_query: Query<(Entity, &Velocity), (With<Grounded>, With<Player>)>,
+) {
+    for (entity, velocity) in grounded_query.iter() {
+        if velocity.y != 0.0 {
+            commands.entity(entity).remove::<Grounded>();
+        }
+    }
+}
+
 pub fn enter_flying_system(
     mut commands: Commands,
     no_flying_query: Query<(Entity, &Velocity), (Without<Flying>, With<Player>)>,

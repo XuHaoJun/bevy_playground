@@ -46,8 +46,8 @@ pub fn player_collision_system(
     >,
     mut collision_events: EventWriter<CollisionEvent>,
     mut fake_brick_trigger_enter_events: EventWriter<FakeBrickTriggerEnterEvent>,
-    // normal_brick_assets: Res<NormalBrickAssets>,
-    // audio: Res<Audio>,
+    normal_brick_assets: Res<NormalBrickAssets>,
+    audio: Res<Audio>,
 ) {
     for (
         player_entity,
@@ -134,7 +134,7 @@ pub fn player_collision_system(
                     match collision {
                         Collision::Top => {
                             if is_trigger_enter {
-                                // audio.play(normal_brick_assets.hit.clone());
+                                audio.play(normal_brick_assets.hit.clone());
                             }
                         }
                         _ => {}

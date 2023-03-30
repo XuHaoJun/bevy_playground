@@ -1,11 +1,11 @@
 use bevy::{
     prelude::*,
-    time::FixedTimestep,
     window::{PresentMode, WindowResizeConstraints},
 };
 use bevy_asset_loader::prelude::*;
 use bevy_kira_audio::AudioPlugin;
-use components::player::DamagingTimer;
+
+use components::player::{DamagingTimer, Player};
 use constants::PHYSICS_DELTA;
 use events::physics_events::{CollisionEvent, FakeBrickTriggerEnterEvent, TriggerEnterEvent};
 use resources::{FakeBrickAssets, NailsBrickAssets, NormalBrickAssets, PlayerAssets, WallAssets};
@@ -18,9 +18,10 @@ use systems::{
     physics_systems::{player_collision_system, velocity_system},
     player_systems::{
         animate_player_system, damaging_timer_system, enter_dead_system, enter_flying_system,
-        enter_grounded_system, leave_flying_system, player_controller_system,
+        enter_grounded_system, leave_flying_system, leave_grounded_system,
+        player_controller_system,
     },
-    startup_systems::{play_background_sound, spawn_bricks, spawn_camera, spawn_players, spawn_walls},
+    startup_systems::{play_background_sound, spawn_bricks, spawn_camera, spawn_players},
     userinput_system::userinput_system,
 };
 
@@ -31,32 +32,31 @@ mod resources;
 mod systems;
 mod utils;
 
-#[derive(Clone, Eq, PartialEq, Debug, Hash)]
-enum GameState {
+#[derive(Clone, Eq, PartialEq, Debug, Hash, Default, States)]
+enum AppState {
+    #[default]
     AssetLoading,
-    Next,
+    InGame,
 }
 
 fn main() {
     App::new()
+        .add_state::<AppState>()
         .add_loading_state(
-            LoadingState::new(GameState::AssetLoading)
-                .continue_to_state(GameState::Next)
-                .with_collection::<PlayerAssets>()
-                .with_collection::<NormalBrickAssets>()
-                .with_collection::<FakeBrickAssets>()
-                .with_collection::<NailsBrickAssets>()
-                .with_collection::<WallAssets>(),
+            LoadingState::new(AppState::AssetLoading).continue_to_state(AppState::InGame),
         )
-        .add_state(GameState::AssetLoading)
+        .add_collection_to_loading_state::<_, PlayerAssets>(AppState::AssetLoading)
+        .add_collection_to_loading_state::<_, NormalBrickAssets>(AppState::AssetLoading)
+        .add_collection_to_loading_state::<_, FakeBrickAssets>(AppState::AssetLoading)
+        .add_collection_to_loading_state::<_, NailsBrickAssets>(AppState::AssetLoading)
+        .add_collection_to_loading_state::<_, WallAssets>(AppState::AssetLoading)
         .add_plugins(
             DefaultPlugins
                 .set(ImagePlugin::default_nearest())
                 .set(WindowPlugin {
-                    window: WindowDescriptor {
+                    primary_window: Some(Window {
                         title: "ns-shaft clone".to_string(),
-                        width: 720.,
-                        height: 1280.,
+                        resolution: (720., 1280.).into(),
                         resizable: true,
                         resize_constraints: WindowResizeConstraints {
                             min_height: 0.0,
@@ -66,7 +66,7 @@ fn main() {
                         },
                         present_mode: PresentMode::AutoVsync,
                         ..default()
-                    },
+                    }),
                     ..default()
                 }),
         )
@@ -75,41 +75,45 @@ fn main() {
         .add_event::<TriggerEnterEvent>()
         .add_event::<FakeBrickTriggerEnterEvent>()
         .add_plugin(AudioPlugin)
-        .add_plugin(bevy_inspector_egui::quick::WorldInspectorPlugin)
-        .add_system_set(
-            SystemSet::on_enter(GameState::Next)
-                .with_system(play_background_sound)
-                .with_system(spawn_camera)
-                .with_system(spawn_bricks.before(spawn_players))
-                .with_system(spawn_walls.before(spawn_players))
-                .with_system(spawn_players),
+        .add_plugin(bevy_inspector_egui::quick::WorldInspectorPlugin::new())
+        .add_systems(
+            (
+                play_background_sound,
+                spawn_camera,
+                spawn_bricks.before(spawn_players),
+                spawn_players,
+            )
+                .in_schedule(OnEnter(AppState::InGame)),
         )
-        .add_system_set(
-            SystemSet::on_update(GameState::Next)
-                .with_system(animate_system)
-                .with_system(animate_player_system.before(animate_system))
-                .with_system(animate_fake_brick_system.before(animate_system)),
+        .add_systems(
+            (
+                animate_system,
+                animate_player_system.before(animate_system),
+                animate_fake_brick_system.before(animate_system),
+            )
+                .in_set(OnUpdate(AppState::InGame)),
         )
-        .add_system_set(
-            SystemSet::on_update(GameState::Next)
-                .with_run_criteria(FixedTimestep::step(PHYSICS_DELTA))
-                .with_system(userinput_system)
-                .with_system(player_controller_system)
-                .with_system(velocity_system)
-                .with_system(enter_grounded_system.after(player_collision_system))
-                .with_system(enter_grounded_system.after(player_collision_system))
-                .with_system(enter_flying_system.after(player_collision_system))
-                .with_system(leave_flying_system.after(player_collision_system))
-                .with_system(
-                    player_collision_system
-                        .after(player_controller_system)
-                        .after(velocity_system),
-                )
-                .with_system(fake_brick_trigger_enter_system.after(player_collision_system))
-                .with_system(fake_brick_flip_system)
-                .with_system(damaging_timer_system)
-                .with_system(player_nails_hitbox_system.after(damaging_timer_system))
-                .with_system(enter_dead_system.after(player_nails_hitbox_system)),
+        .add_systems(
+            (
+                userinput_system,
+                player_controller_system,
+                velocity_system,
+                enter_grounded_system.after(player_collision_system),
+                leave_grounded_system.after(player_collision_system),
+                enter_flying_system.after(player_collision_system),
+                leave_flying_system.after(player_collision_system),
+                player_collision_system
+                    .after(player_controller_system)
+                    .after(velocity_system),
+                fake_brick_trigger_enter_system.after(player_collision_system),
+                fake_brick_flip_system,
+                damaging_timer_system,
+                player_nails_hitbox_system.after(damaging_timer_system),
+                enter_dead_system.after(player_nails_hitbox_system),
+            )
+                .distributive_run_if(|state: Res<State<AppState>>| state.0 == AppState::InGame)
+                .in_schedule(CoreSchedule::FixedUpdate),
         )
+        .insert_resource(FixedTime::new_from_secs(PHYSICS_DELTA as f32))
         .run();
 }

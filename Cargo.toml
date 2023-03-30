@@ -18,25 +18,33 @@ codegen-units = 1
 
 [features]
 dev = [
-  "bevy/dynamic",
+  "bevy/dynamic_linking",
 ]
 
 [dependencies]
-bevy = { version =  "0.9.1", default-features = false, features = [
+bevy = { version =  "0.10.0", default-features = false, features = [
   "animation",
   "bevy_asset",
-  "bevy_gilrs",
   "bevy_scene",
   "bevy_winit",
-  "render",
+  "bevy_core_pipeline",
+  "bevy_pbr",
+  "bevy_render",
+  "bevy_sprite",
+  "bevy_text",
+  "bevy_ui",
   "png",
   "hdr",
+  "ktx2",
+  "zstd",
   "x11",
-  "filesystem_watcher"] }
-bevy_kira_audio = { version = "0.14" }
-bevy_ggrs = { version = "0.11", features = ["wasm-bindgen"] }
-matchbox_socket = { version = "0.5", features = ["ggrs-socket"] }
+  "filesystem_watcher",
+  "tonemapping_luts",
+  ] }
+bevy_kira_audio = { version = "0.15.0" }
+# bevy_ggrs = { version = "0.11", features = ["wasm-bindgen"] }
+# matchbox_socket = { version = "0.5", features = ["ggrs-socket"] }
 benimator = { version = "4.1.2" }
-bevy_asset_loader = { version = "0.14.1", features = ["2d"] }
-bevy_egui = { version = "0.19.0" }
-bevy-inspector-egui = { version = "0.17.0" }
+bevy_asset_loader = { version = "0.15.0", features = ["2d"] }
+bevy_egui = { version = "0.20.2" }
+bevy-inspector-egui = { version = "0.18.1" }
