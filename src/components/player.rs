@@ -27,11 +27,11 @@ pub struct PlayerBundle {
 }
 
 impl PlayerBundle {
-    pub fn new(transform: Transform, player_assets: &PlayerAssets) -> Self {
+    pub fn new(handle: u32, transform: Transform, player_assets: &PlayerAssets) -> Self {
         let animations = PlayerAnimations::default();
         let animation = animations.idle.clone();
         PlayerBundle {
-            player: Player {},
+            player: Player { handle },
             health: Health::new_player_health(),
 
             spirtes: SpriteSheetBundle {
@@ -59,8 +59,10 @@ impl PlayerBundle {
     }
 }
 
-#[derive(Component)]
-pub struct Player;
+#[derive(Component, Default, Clone)]
+pub struct Player {
+    pub handle: u32
+}
 
 #[derive(Component, Clone)]
 pub struct PlayerAnimations {

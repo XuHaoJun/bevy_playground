@@ -6,3 +6,4 @@ pub mod wall;
 pub mod physics;
 pub mod player;
 pub mod userinput;
+pub mod ui;

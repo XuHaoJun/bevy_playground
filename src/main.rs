@@ -3,14 +3,15 @@ use bevy::{
     window::{PresentMode, WindowResizeConstraints},
 };
 use bevy_asset_loader::prelude::*;
+use bevy_egui::EguiPlugin;
 use bevy_kira_audio::AudioPlugin;
 
-use components::player::DamagingTimer;
+use components::player::{DamagingTimer, Player};
 use constants::PHYSICS_DELTA;
 use events::physics_events::{CollisionEvent, FakeBrickTriggerEnterEvent, TriggerEnterEvent};
 use resources::{
     scoreboard::{ScoreTimer, Scoreboard},
-    FakeBrickAssets, NailsBrickAssets, NormalBrickAssets, PlayerAssets, WallAssets,
+    FakeBrickAssets, NailsBrickAssets, NormalBrickAssets, PlayerAssets, WallAssets, UiAssets,
 };
 use systems::{
     animate_systems::animate_system,
@@ -26,6 +27,7 @@ use systems::{
     },
     scoreboard_systems::add_score,
     startup_systems::{play_background_sound, spawn_bricks, spawn_camera, spawn_players},
+    ui::in_game_ui_systems::{build_in_game_ui, update_health_text, update_score_text},
     userinput_system::userinput_system,
 };
 
@@ -40,6 +42,7 @@ mod utils;
 enum AppState {
     #[default]
     AssetLoading,
+    MainMenu,
     InGame,
 }
 
@@ -54,6 +57,7 @@ fn main() {
         .add_collection_to_loading_state::<_, FakeBrickAssets>(AppState::AssetLoading)
         .add_collection_to_loading_state::<_, NailsBrickAssets>(AppState::AssetLoading)
         .add_collection_to_loading_state::<_, WallAssets>(AppState::AssetLoading)
+        .add_collection_to_loading_state::<_, UiAssets>(AppState::AssetLoading)
         .add_plugins(
             DefaultPlugins
                 .set(ImagePlugin::default_nearest())
@@ -86,7 +90,7 @@ fn main() {
             (
                 play_background_sound,
                 spawn_camera,
-                spawn_bricks.before(spawn_players),
+                spawn_bricks,
                 spawn_players,
             )
                 .in_schedule(OnEnter(AppState::InGame)),
@@ -97,6 +101,8 @@ fn main() {
                 animate_player_system.before(animate_system),
                 animate_fake_brick_system.before(animate_system),
                 add_score,
+                update_score_text.after(add_score),
+                update_health_text,
             )
                 .in_set(OnUpdate(AppState::InGame)),
         )

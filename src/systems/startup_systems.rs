@@ -6,19 +6,26 @@ use crate::{
         fake_brick::FakeBrickBundle,
         nails_brick::NailsBrickBundle,
         normal_brick::NormalBrickBundle,
-        player::PlayerBundle,
+        player::{Player, PlayerBundle},
         wall::{WallBundle, WALL_HEIGHT, WALL_WIDTH},
     },
-    resources::{FakeBrickAssets, NailsBrickAssets, NormalBrickAssets, PlayerAssets, WallAssets},
+    resources::{FakeBrickAssets, NailsBrickAssets, NormalBrickAssets, PlayerAssets, WallAssets, UiAssets},
 };
+
+use super::ui::in_game_ui_systems::build_in_game_ui;
 
 pub fn spawn_camera(mut commands: Commands) {
     commands.spawn(Camera2dBundle::default());
 }
 
-pub fn spawn_players(mut commands: Commands, player_assets: Res<PlayerAssets>) {
+pub fn spawn_players(
+    mut commands: Commands,
+    player_assets: Res<PlayerAssets>,
+    ui_assets: Res<UiAssets>,
+) {
     let player1_transform = Transform::from_xyz(0.0, 200.0, 2.0);
-    commands.spawn(PlayerBundle::new(player1_transform, &player_assets));
+    commands.spawn(PlayerBundle::new(0, player1_transform, &player_assets));
+    build_in_game_ui(&mut commands, &ui_assets, vec![0]);
 }
 
 pub fn spawn_bricks(

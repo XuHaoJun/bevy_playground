@@ -85,3 +85,12 @@ pub struct WallAssets {
     #[asset(path = "wall.png")]
     pub sprite_sheet: Handle<TextureAtlas>,
 }
+
+#[derive(AssetCollection, Resource)]
+pub struct UiAssets {
+    #[asset(path = "fonts/FiraMono-Medium.ttf")]
+    pub medium_font: Handle<Font>,
+
+    #[asset(path = "fonts/FiraSans-Bold.ttf")]
+    pub bold_font: Handle<Font>,
+}

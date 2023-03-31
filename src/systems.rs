@@ -6,3 +6,4 @@ pub mod physics_systems;
 pub mod fake_brick_systems;
 pub mod nails_brick_systems;
 pub mod scoreboard_systems;
+pub mod ui;
