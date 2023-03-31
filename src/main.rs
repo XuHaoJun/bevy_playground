@@ -5,10 +5,13 @@ use bevy::{
 use bevy_asset_loader::prelude::*;
 use bevy_kira_audio::AudioPlugin;
 
-use components::player::{DamagingTimer, Player};
+use components::player::DamagingTimer;
 use constants::PHYSICS_DELTA;
 use events::physics_events::{CollisionEvent, FakeBrickTriggerEnterEvent, TriggerEnterEvent};
-use resources::{FakeBrickAssets, NailsBrickAssets, NormalBrickAssets, PlayerAssets, WallAssets};
+use resources::{
+    scoreboard::{ScoreTimer, Scoreboard},
+    FakeBrickAssets, NailsBrickAssets, NormalBrickAssets, PlayerAssets, WallAssets,
+};
 use systems::{
     animate_systems::animate_system,
     fake_brick_systems::{
@@ -21,6 +24,7 @@ use systems::{
         enter_grounded_system, leave_flying_system, leave_grounded_system,
         player_controller_system,
     },
+    scoreboard_systems::add_score,
     startup_systems::{play_background_sound, spawn_bricks, spawn_camera, spawn_players},
     userinput_system::userinput_system,
 };
@@ -76,6 +80,8 @@ fn main() {
         .add_event::<FakeBrickTriggerEnterEvent>()
         .add_plugin(AudioPlugin)
         .add_plugin(bevy_inspector_egui::quick::WorldInspectorPlugin::new())
+        .insert_resource(Scoreboard::default())
+        .insert_resource(ScoreTimer::default())
         .add_systems(
             (
                 play_background_sound,
@@ -90,6 +96,7 @@ fn main() {
                 animate_system,
                 animate_player_system.before(animate_system),
                 animate_fake_brick_system.before(animate_system),
+                add_score,
             )
                 .in_set(OnUpdate(AppState::InGame)),
         )

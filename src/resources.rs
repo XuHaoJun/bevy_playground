@@ -2,6 +2,8 @@ use bevy::prelude::*;
 use bevy_asset_loader::prelude::*;
 use bevy_kira_audio::AudioSource;
 
+pub mod scoreboard;
+
 #[derive(AssetCollection, Resource)]
 pub struct PlayerAssets {
     #[asset(texture_atlas(
