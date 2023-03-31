@@ -25,7 +25,7 @@ pub fn build_in_game_ui(
                     flex_direction: FlexDirection::Row,
                     align_items: AlignItems::Center,
                     justify_content: JustifyContent::FlexStart,
-                    gap: Size::new(Val::Px(8.0), Val::Px(0.0)),
+                    gap: Size::new(Val::Px(16.0), Val::Px(0.0)),
                     padding: UiRect::new(Val::Px(8.0), Val::Px(16.0), Val::Px(0.0), Val::Px(0.0)),
                     ..Default::default()
                 },

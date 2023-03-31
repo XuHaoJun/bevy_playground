@@ -1,4 +1,4 @@
-use bevy::prelude::*;
+use bevy::{prelude::*, window::PrimaryWindow};
 use bevy_kira_audio::prelude::*;
 
 use crate::{
@@ -9,7 +9,9 @@ use crate::{
         player::{Player, PlayerBundle},
         wall::{WallBundle, WALL_HEIGHT, WALL_WIDTH},
     },
-    resources::{FakeBrickAssets, NailsBrickAssets, NormalBrickAssets, PlayerAssets, WallAssets, UiAssets},
+    resources::{
+        FakeBrickAssets, NailsBrickAssets, NormalBrickAssets, PlayerAssets, UiAssets, WallAssets,
+    }, constants::IN_GAME_UI_APP_BAR_HEIGHT,
 };
 
 use super::ui::in_game_ui_systems::build_in_game_ui;
@@ -47,18 +49,28 @@ pub fn spawn_bricks(
     commands.spawn(FakeBrickBundle::new(fake1_transform, &fake_brick_assets));
 }
 
-// pub fn spawn_walls(mut commands: Commands, windows: Res<Windows>, wall_assets: Res<WallAssets>) {
-//     let window = windows.primary();
-//     let height = window.height();
-//     let width = window.width();
-
-//     let transform = Transform::from_xyz(
-//         width / 2.0 + -(WALL_WIDTH / 2.0),
-//         height / 2.0 - (WALL_HEIGHT / 2.0),
-//         0.0,
-//     );
-//     commands.spawn(WallBundle::new(transform, &wall_assets));
-// }
+pub fn spawn_walls(
+    mut commands: Commands,
+    primary_query: Query<&Window, With<PrimaryWindow>>,
+    wall_assets: Res<WallAssets>,
+) {
+    if let Ok(window) = primary_query.get_single() {
+        let height = window.height();
+        let width = window.width();
+        let right_transform = Transform::from_xyz(
+            width / 2.0 - (WALL_WIDTH / 2.0),
+            height / 2.0 - (WALL_HEIGHT / 2.0) - IN_GAME_UI_APP_BAR_HEIGHT,
+            0.0,
+        );
+        commands.spawn(WallBundle::new(right_transform, &wall_assets));
+        let left_transform = Transform::from_xyz(
+            -1.0 * right_transform.translation.x,
+             right_transform.translation.y,
+            0.0,
+        );
+        commands.spawn(WallBundle::new(left_transform, &wall_assets));
+    }
+}
 
 pub fn play_background_sound(asset_server: Res<AssetServer>, audio: Res<Audio>) {
     let dir = "sounds/background";

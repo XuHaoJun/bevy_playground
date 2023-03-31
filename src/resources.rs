@@ -76,7 +76,7 @@ pub struct FakeBrickAssets {
 pub struct WallAssets {
     #[asset(texture_atlas(
         tile_size_x = 18.0,
-        tile_size_y = 400.0,
+        tile_size_y = 1200.0,
         columns = 1,
         rows = 1,
         padding_x = 0.0,

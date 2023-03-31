@@ -1,6 +1,6 @@
 use bevy::{
     prelude::*,
-    window::{PresentMode, WindowResizeConstraints},
+    window::{PresentMode, WindowResizeConstraints, WindowResolution},
 };
 use bevy_asset_loader::prelude::*;
 use bevy_egui::EguiPlugin;
@@ -11,7 +11,7 @@ use constants::PHYSICS_DELTA;
 use events::physics_events::{CollisionEvent, FakeBrickTriggerEnterEvent, TriggerEnterEvent};
 use resources::{
     scoreboard::{ScoreTimer, Scoreboard},
-    FakeBrickAssets, NailsBrickAssets, NormalBrickAssets, PlayerAssets, WallAssets, UiAssets,
+    FakeBrickAssets, NailsBrickAssets, NormalBrickAssets, PlayerAssets, UiAssets, WallAssets,
 };
 use systems::{
     animate_systems::animate_system,
@@ -26,8 +26,10 @@ use systems::{
         player_controller_system,
     },
     scoreboard_systems::add_score,
-    startup_systems::{play_background_sound, spawn_bricks, spawn_camera, spawn_players},
-    ui::in_game_ui_systems::{build_in_game_ui, update_health_text, update_score_text},
+    startup_systems::{
+        play_background_sound, spawn_bricks, spawn_camera, spawn_players, spawn_walls,
+    },
+    ui::in_game_ui_systems::{update_health_text, update_score_text},
     userinput_system::userinput_system,
 };
 
@@ -64,13 +66,13 @@ fn main() {
                 .set(WindowPlugin {
                     primary_window: Some(Window {
                         title: "ns-shaft clone".to_string(),
-                        resolution: (720., 1280.).into(),
+                        resolution: WindowResolution::new(540.0, 960.0),
                         resizable: true,
                         resize_constraints: WindowResizeConstraints {
                             min_height: 0.0,
-                            max_height: 1280.0,
-                            min_width: 720.0,
-                            max_width: 720.0,
+                            max_height: 960.0,
+                            min_width: 540.0,
+                            max_width: 540.0,
                         },
                         present_mode: PresentMode::AutoVsync,
                         ..default()
@@ -92,6 +94,7 @@ fn main() {
                 spawn_camera,
                 spawn_bricks,
                 spawn_players,
+                spawn_walls,
             )
                 .in_schedule(OnEnter(AppState::InGame)),
         )
