@@ -7,7 +7,7 @@ use crate::{
     resources::CeilingAssets,
 };
 
-use super::physics::{BoxCollider, Velocity};
+use super::physics::{BoxCollider};
 
 #[derive(Bundle)]
 pub struct CeilingBundle {
