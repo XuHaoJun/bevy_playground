@@ -94,3 +94,17 @@ pub struct UiAssets {
     #[asset(path = "fonts/FiraSans-Bold.ttf")]
     pub bold_font: Handle<Font>,
 }
+
+#[derive(AssetCollection, Resource)]
+pub struct CeilingAssets {
+    #[asset(texture_atlas(
+        tile_size_x = 800.0,
+        tile_size_y = 16.0,
+        columns = 1,
+        rows = 1,
+        padding_x = 0.0,
+        padding_y = 0.0
+    ))]
+    #[asset(path = "ceiling.png")]
+    pub sprite_sheet: Handle<TextureAtlas>,
+}

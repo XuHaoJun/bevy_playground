@@ -1,20 +1,23 @@
+use std::time::Duration;
+
 use bevy::{
     prelude::*,
     window::{PresentMode, WindowResizeConstraints, WindowResolution},
 };
 use bevy_asset_loader::prelude::*;
-use bevy_egui::EguiPlugin;
 use bevy_kira_audio::AudioPlugin;
 
-use components::player::{DamagingTimer, Player};
+use components::player::DamagingTimer;
 use constants::PHYSICS_DELTA;
 use events::physics_events::{CollisionEvent, FakeBrickTriggerEnterEvent, TriggerEnterEvent};
 use resources::{
     scoreboard::{ScoreTimer, Scoreboard},
-    FakeBrickAssets, NailsBrickAssets, NormalBrickAssets, PlayerAssets, UiAssets, WallAssets,
+    CeilingAssets, FakeBrickAssets, NailsBrickAssets, NormalBrickAssets, PlayerAssets, UiAssets,
+    WallAssets,
 };
 use systems::{
     animate_systems::animate_system,
+    ceiling_systems::{celling_hurting_player_system, player_ceiling_hitbox_system},
     fake_brick_systems::{
         animate_fake_brick_system, fake_brick_flip_system, fake_brick_trigger_enter_system,
     },
@@ -27,7 +30,8 @@ use systems::{
     },
     scoreboard_systems::add_score,
     startup_systems::{
-        play_background_sound, spawn_bricks, spawn_camera, spawn_players, spawn_walls,
+        play_background_sound, spawn_bricks, spawn_camera, spawn_ceiling, spawn_players,
+        spawn_walls,
     },
     ui::in_game_ui_systems::{update_health_text, update_score_text},
     userinput_system::userinput_system,
@@ -60,6 +64,7 @@ fn main() {
         .add_collection_to_loading_state::<_, NailsBrickAssets>(AppState::AssetLoading)
         .add_collection_to_loading_state::<_, WallAssets>(AppState::AssetLoading)
         .add_collection_to_loading_state::<_, UiAssets>(AppState::AssetLoading)
+        .add_collection_to_loading_state::<_, CeilingAssets>(AppState::AssetLoading)
         .add_plugins(
             DefaultPlugins
                 .set(ImagePlugin::default_nearest())
@@ -95,6 +100,7 @@ fn main() {
                 spawn_bricks,
                 spawn_players,
                 spawn_walls,
+                spawn_ceiling,
             )
                 .in_schedule(OnEnter(AppState::InGame)),
         )
@@ -125,11 +131,17 @@ fn main() {
                 fake_brick_flip_system,
                 damaging_timer_system,
                 player_nails_hitbox_system.after(damaging_timer_system),
-                enter_dead_system.after(player_nails_hitbox_system),
+                player_ceiling_hitbox_system
+                    .after(damaging_timer_system)
+                    .after(player_collision_system),
+                celling_hurting_player_system.before(player_ceiling_hitbox_system),
+                enter_dead_system
+                    .after(player_nails_hitbox_system)
+                    .after(player_ceiling_hitbox_system),
             )
                 .distributive_run_if(|state: Res<State<AppState>>| state.0 == AppState::InGame)
                 .in_schedule(CoreSchedule::FixedUpdate),
         )
-        .insert_resource(FixedTime::new_from_secs(PHYSICS_DELTA as f32))
+        .insert_resource(FixedTime::new(Duration::from_secs_f64(PHYSICS_DELTA)))
         .run();
 }

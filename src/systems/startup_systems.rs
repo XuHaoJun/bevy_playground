@@ -3,15 +3,14 @@ use bevy_kira_audio::prelude::*;
 
 use crate::{
     components::{
-        fake_brick::FakeBrickBundle,
-        nails_brick::NailsBrickBundle,
-        normal_brick::NormalBrickBundle,
-        player::{Player, PlayerBundle},
-        wall::{WallBundle, WALL_HEIGHT, WALL_WIDTH},
+        ceiling::CeilingBundle, fake_brick::FakeBrickBundle, nails_brick::NailsBrickBundle,
+        normal_brick::NormalBrickBundle, player::PlayerBundle, wall::WallBundle,
     },
+    constants::{CELLING_HEIGHT, IN_GAME_UI_APP_BAR_HEIGHT, WALL_HEIGHT, WALL_WIDTH},
     resources::{
-        FakeBrickAssets, NailsBrickAssets, NormalBrickAssets, PlayerAssets, UiAssets, WallAssets,
-    }, constants::IN_GAME_UI_APP_BAR_HEIGHT,
+        CeilingAssets, FakeBrickAssets, NailsBrickAssets, NormalBrickAssets, PlayerAssets,
+        UiAssets, WallAssets,
+    },
 };
 
 use super::ui::in_game_ui_systems::build_in_game_ui;
@@ -65,11 +64,26 @@ pub fn spawn_walls(
         commands.spawn(WallBundle::new(right_transform, &wall_assets));
         let left_transform = Transform::from_xyz(
             -1.0 * right_transform.translation.x,
-             right_transform.translation.y,
+            right_transform.translation.y,
             0.0,
         );
         commands.spawn(WallBundle::new(left_transform, &wall_assets));
     }
+}
+
+pub fn spawn_ceiling(
+    mut commands: Commands,
+    primary_query: Query<&Window, With<PrimaryWindow>>,
+    ceiling_assets: Res<CeilingAssets>,
+) {
+    let window = primary_query.get_single().unwrap();
+    let height = window.height();
+    let transform = Transform::from_xyz(
+        0.0,
+        (height / 2.0) - IN_GAME_UI_APP_BAR_HEIGHT - (CELLING_HEIGHT / 2.0),
+        0.0,
+    );
+    commands.spawn(CeilingBundle::new(transform, &ceiling_assets));
 }
 
 pub fn play_background_sound(asset_server: Res<AssetServer>, audio: Res<Audio>) {

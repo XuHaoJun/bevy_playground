@@ -7,3 +7,4 @@ pub mod physics;
 pub mod player;
 pub mod userinput;
 pub mod ui;
+pub mod ceiling;

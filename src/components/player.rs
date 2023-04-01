@@ -47,10 +47,7 @@ impl PlayerBundle {
                 move_accelection: Vec2::ZERO,
             },
 
-            collider: BoxCollider {
-                size: Vec2::new(32.0, 32.0),
-                ..default()
-            },
+            collider: BoxCollider::new_player_collider(),
             last_collisions: LastCollisions {
                 entities: Vec::new(),
             },
@@ -59,9 +56,18 @@ impl PlayerBundle {
     }
 }
 
+impl BoxCollider {
+    pub fn new_player_collider() -> Self {
+        Self {
+            size: Vec2::new(32.0, 32.0),
+            ..default()
+        }
+    }
+}
+
 #[derive(Component, Default, Clone)]
 pub struct Player {
-    pub handle: u32
+    pub handle: u32,
 }
 
 #[derive(Component, Clone)]
