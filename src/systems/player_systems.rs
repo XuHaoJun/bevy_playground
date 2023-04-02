@@ -12,9 +12,16 @@ use crate::{
     constants::PHYSICS_DELTA,
 };
 
-pub fn player_controller_system(mut player_query: Query<(&mut Velocity, &Userinput)>) {
-    for (mut velocity, userinput) in player_query.iter_mut() {
-        let move_speed = 4.0;
+pub fn player_controller_system(
+    mut player_query: Query<(&mut Velocity, &Userinput, Option<&Flying>), With<Player>>,
+) {
+    for (mut velocity, userinput, maybe_flying) in player_query.iter_mut() {
+        let move_speed = {
+            match maybe_flying {
+                Some(_) => 2.5,
+                None => 4.0,
+            }
+        };
         velocity.x = move_speed * userinput.move_accelection.x;
     }
 }
