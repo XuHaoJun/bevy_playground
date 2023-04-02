@@ -53,7 +53,7 @@ pub fn player_ceiling_hitbox_system(
 
             if let Some(_) = collision {
                 if let None = maybe_player_damaging {
-                    player_health.value = player_health.clamp(player_health.value - 1);
+                    player_health.value = player_health.clamp(player_health.value - 5);
                     commands
                         .entity(player_entity)
                         .insert(DamagingTimer::default())

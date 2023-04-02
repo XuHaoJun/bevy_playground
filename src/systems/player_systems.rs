@@ -1,6 +1,7 @@
 use std::time::Duration;
 
 use bevy::prelude::*;
+use bevy_kira_audio::prelude::*;
 
 use crate::{
     components::{
@@ -10,6 +11,7 @@ use crate::{
         userinput::Userinput,
     },
     constants::PHYSICS_DELTA,
+    resources::PlayerAssets,
 };
 
 pub fn player_controller_system(
@@ -158,11 +160,14 @@ pub fn leave_flying_system(
 
 pub fn enter_dead_system(
     mut commands: Commands,
-    health_query: Query<(Entity, &Health), Without<Dead>>,
+    health_query: Query<(Entity, &Health), (Without<Dead>, With<Player>)>,
+    player_assets: Res<PlayerAssets>,
+    audio: Res<Audio>,
 ) {
     for (entity, health) in health_query.iter() {
         if health.value <= 0 {
             commands.entity(entity).insert(Dead {});
+            audio.play(player_assets.die.clone());
         }
     }
 }

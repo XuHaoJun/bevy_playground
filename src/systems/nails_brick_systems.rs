@@ -39,7 +39,7 @@ pub fn player_nails_hitbox_system(
             );
 
             if let Some(_) = collision {
-                player_health.value = player_health.clamp(player_health.value - 1);
+                player_health.value = player_health.clamp(player_health.value - 5);
                 commands
                     .entity(player_entity)
                     .insert(DamagingTimer::default())
