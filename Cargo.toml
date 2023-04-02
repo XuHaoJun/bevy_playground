@@ -28,7 +28,7 @@ bevy_ggrs = { version = "0.12", features = ["wasm-bindgen"] }
 bevy_ggrs = { version = "0.12" }
 
 [dependencies]
-bevy = { version =  "0.10.0", default-features = false, features = [
+bevy = { version =  "0.10.1", default-features = false, features = [
   "animation",
   "bevy_asset",
   "bevy_scene",
