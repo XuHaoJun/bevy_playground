@@ -1,4 +1,4 @@
-use bevy::prelude::*;
+use bevy::{prelude::*, sprite::collide_aabb::Collision};
 
 #[derive(Component, Default)]
 pub struct BoxCollider {
@@ -9,6 +9,7 @@ pub struct BoxCollider {
 #[derive(Component)]
 pub struct LastCollisions {
     pub entities: Vec<Entity>,
+    pub collisions: Vec<Collision>,
 }
 
 #[derive(Component, Deref, DerefMut, Clone, Copy)]

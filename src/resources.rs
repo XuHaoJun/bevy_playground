@@ -90,6 +90,34 @@ pub struct SpringBrickAssets {
 }
 
 #[derive(AssetCollection, Resource)]
+pub struct ConveyorBrickAssets {
+    #[asset(texture_atlas(
+        tile_size_x = 96.0,
+        tile_size_y = 16.0,
+        columns = 1,
+        rows = 4,
+        padding_x = 0.0,
+        padding_y = 0.0
+    ))]
+    #[asset(path = "conveyor_left.png")]
+    pub left_sprite_sheet: Handle<TextureAtlas>,
+
+    #[asset(texture_atlas(
+        tile_size_x = 96.0,
+        tile_size_y = 16.0,
+        columns = 1,
+        rows = 4,
+        padding_x = 0.0,
+        padding_y = 0.0
+    ))]
+    #[asset(path = "conveyor_right.png")]
+    pub right_sprite_sheet: Handle<TextureAtlas>,
+
+    #[asset(path = "sounds/conveyor.ogg")]
+    pub hit: Handle<AudioSource>,
+}
+
+#[derive(AssetCollection, Resource)]
 pub struct WallAssets {
     #[asset(texture_atlas(
         tile_size_x = 18.0,

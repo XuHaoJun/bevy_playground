@@ -56,6 +56,7 @@ pub fn spring_brick_trigger_enter_system(
             _ => {}
         }
     }
+    trigger_enter_events.clear();
 }
 
 pub fn animate_spring_brick_system(

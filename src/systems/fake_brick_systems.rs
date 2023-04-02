@@ -80,6 +80,7 @@ pub fn fake_brick_trigger_enter_system(
             _ => {}
         }
     }
+    trigger_enter_events.clear();
 }
 
 pub fn fake_brick_flip_system(

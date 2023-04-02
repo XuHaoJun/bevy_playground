@@ -10,12 +10,13 @@ use bevy_kira_audio::AudioPlugin;
 use components::player::DamagingTimer;
 use constants::PHYSICS_DELTA;
 use events::physics_events::{
-    CollisionEvent, FakeBrickTriggerEnterEvent, SpringBrickTriggerEnterEvent, TriggerEnterEvent,
+    CollisionEvent, ConveyorBrickTriggerEnterEvent, ConveyorBrickTriggerLeaveEvent,
+    FakeBrickTriggerEnterEvent, SpringBrickTriggerEnterEvent, TriggerEvent,
 };
 use resources::{
     scoreboard::{ScoreTimer, Scoreboard},
-    CeilingAssets, FakeBrickAssets, NailsBrickAssets, NormalBrickAssets, PlayerAssets,
-    SpringBrickAssets, UiAssets, WallAssets,
+    CeilingAssets, ConveyorBrickAssets, FakeBrickAssets, NailsBrickAssets, NormalBrickAssets,
+    PlayerAssets, SpringBrickAssets, UiAssets, WallAssets,
 };
 use systems::{
     animate_systems::animate_system,
@@ -37,7 +38,7 @@ use systems::{
         spawn_walls,
     },
     ui::in_game_ui_systems::{update_health_text, update_score_text},
-    userinput_system::userinput_system,
+    userinput_system::userinput_system, conveyor_brick_systems::player_on_conveyor_system,
 };
 
 mod components;
@@ -69,6 +70,7 @@ fn main() {
         .add_collection_to_loading_state::<_, UiAssets>(AppState::AssetLoading)
         .add_collection_to_loading_state::<_, CeilingAssets>(AppState::AssetLoading)
         .add_collection_to_loading_state::<_, SpringBrickAssets>(AppState::AssetLoading)
+        .add_collection_to_loading_state::<_, ConveyorBrickAssets>(AppState::AssetLoading)
         .add_plugins(
             DefaultPlugins
                 .set(ImagePlugin::default_nearest())
@@ -91,9 +93,11 @@ fn main() {
         )
         .register_type::<DamagingTimer>()
         .add_event::<CollisionEvent>()
-        .add_event::<TriggerEnterEvent>()
+        .add_event::<TriggerEvent>()
         .add_event::<FakeBrickTriggerEnterEvent>()
         .add_event::<SpringBrickTriggerEnterEvent>()
+        .add_event::<ConveyorBrickTriggerEnterEvent>()
+        .add_event::<ConveyorBrickTriggerLeaveEvent>()
         .add_plugin(AudioPlugin)
         .add_plugin(bevy_inspector_egui::quick::WorldInspectorPlugin::new())
         .insert_resource(Scoreboard::default())
@@ -158,7 +162,10 @@ fn main() {
                 .in_schedule(CoreSchedule::FixedUpdate),
         )
         .add_systems(
-            (spring_brick_trigger_enter_system.after(player_collision_system),)
+            (
+                spring_brick_trigger_enter_system.after(player_collision_system),
+                player_on_conveyor_system.after(player_collision_system),
+            )
                 .distributive_run_if(|state: Res<State<AppState>>| state.0 == AppState::InGame)
                 .in_schedule(CoreSchedule::FixedUpdate),
         )

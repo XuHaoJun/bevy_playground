@@ -6,6 +6,7 @@ use bevy_kira_audio::prelude::*;
 use crate::{
     components::{
         animation::{Animation, AnimationState},
+        conveyor_brick::{ConveyorDirection, ConveyorMoved},
         physics::Velocity,
         player::*,
         userinput::Userinput,
@@ -15,16 +16,31 @@ use crate::{
 };
 
 pub fn player_controller_system(
-    mut player_query: Query<(&mut Velocity, &Userinput, Option<&Flying>), With<Player>>,
+    mut player_query: Query<
+        (
+            &mut Velocity,
+            &Userinput,
+            Option<&Flying>,
+            Option<&ConveyorMoved>,
+        ),
+        With<Player>,
+    >,
 ) {
-    for (mut velocity, userinput, maybe_flying) in player_query.iter_mut() {
+    for (mut velocity, userinput, maybe_flying, maybe_conveyor_moved) in player_query.iter_mut() {
         let move_speed = {
             match maybe_flying {
                 Some(_) => 2.5,
                 None => 4.0,
             }
         };
-        velocity.x = move_speed * userinput.move_accelection.x;
+        let conveyor_x_velocity = match maybe_conveyor_moved {
+            Some(conveyor_moved) => match conveyor_moved.direction {
+                ConveyorDirection::Left => -2.5,
+                ConveyorDirection::Right => 2.5,
+            },
+            None => 0.0,
+        };
+        velocity.x = (move_speed * userinput.move_accelection.x) + conveyor_x_velocity;
     }
 }
 

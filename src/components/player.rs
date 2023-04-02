@@ -50,6 +50,7 @@ impl PlayerBundle {
             collider: BoxCollider::new_player_collider(),
             last_collisions: LastCollisions {
                 entities: Vec::new(),
+                collisions: Vec::new(),
             },
             velocity: Velocity(Vec2 { x: 0.0, y: -1.0 }),
         }
