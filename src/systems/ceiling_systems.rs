@@ -75,14 +75,13 @@ pub fn celling_hurting_player_system(
     mut commands: Commands,
     fixed_time: Res<FixedTime>,
     mut player_query: Query<
-        (Entity, &mut Velocity, &mut CeilingHurtingTimer),
+        (Entity, &mut CeilingHurtingTimer),
         (With<Player>, With<CeilingHurting>),
     >,
 ) {
-    for (entity, mut velocity, mut timer) in &mut player_query {
+    for (entity, mut timer) in &mut player_query {
         timer.tick(fixed_time.period);
         if timer.finished() {
-            velocity.y = -1.0;
             commands
                 .entity(entity)
                 .remove::<CeilingHurtingTimer>()

@@ -73,6 +73,23 @@ pub struct FakeBrickAssets {
 }
 
 #[derive(AssetCollection, Resource)]
+pub struct SpringBrickAssets {
+    #[asset(texture_atlas(
+        tile_size_x = 97.0,
+        tile_size_y = 22.0,
+        columns = 1,
+        rows = 6,
+        padding_x = 0.0,
+        padding_y = 0.0
+    ))]
+    #[asset(path = "spring.png")]
+    pub sprite_sheet: Handle<TextureAtlas>,
+
+    #[asset(path = "sounds/spring.ogg")]
+    pub hit: Handle<AudioSource>,
+}
+
+#[derive(AssetCollection, Resource)]
 pub struct WallAssets {
     #[asset(texture_atlas(
         tile_size_x = 18.0,

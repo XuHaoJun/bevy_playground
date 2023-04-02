@@ -6,9 +6,7 @@ use crate::{
     components::{
         animation::{Animation, AnimationState},
         physics::Velocity,
-        player::{
-            Damaging, DamagingTimer, Dead, Flying, Grounded, Health, Player, PlayerAnimations,
-        },
+        player::*,
         userinput::Userinput,
     },
     constants::PHYSICS_DELTA,
@@ -172,6 +170,18 @@ pub fn damaging_timer_system(
             commands
                 .entity(entity)
                 .remove::<(Damaging, DamagingTimer)>();
+        }
+    }
+}
+
+pub fn jumping_timer_system(
+    mut commands: Commands,
+    mut timer_query: Query<(Entity, &mut JumpingTimer), With<Jumping>>,
+) {
+    for (entity, mut cooldown) in timer_query.iter_mut() {
+        cooldown.timer.tick(Duration::from_secs_f64(PHYSICS_DELTA));
+        if cooldown.timer.finished() {
+            commands.entity(entity).remove::<(Jumping, JumpingTimer)>();
         }
     }
 }

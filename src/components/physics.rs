@@ -11,5 +11,5 @@ pub struct LastCollisions {
     pub entities: Vec<Entity>,
 }
 
-#[derive(Component, Deref, DerefMut)]
+#[derive(Component, Deref, DerefMut, Clone, Copy)]
 pub struct Velocity(pub Vec2);

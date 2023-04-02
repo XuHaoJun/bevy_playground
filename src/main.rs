@@ -9,11 +9,13 @@ use bevy_kira_audio::AudioPlugin;
 
 use components::player::DamagingTimer;
 use constants::PHYSICS_DELTA;
-use events::physics_events::{CollisionEvent, FakeBrickTriggerEnterEvent, TriggerEnterEvent};
+use events::physics_events::{
+    CollisionEvent, FakeBrickTriggerEnterEvent, SpringBrickTriggerEnterEvent, TriggerEnterEvent,
+};
 use resources::{
     scoreboard::{ScoreTimer, Scoreboard},
-    CeilingAssets, FakeBrickAssets, NailsBrickAssets, NormalBrickAssets, PlayerAssets, UiAssets,
-    WallAssets,
+    CeilingAssets, FakeBrickAssets, NailsBrickAssets, NormalBrickAssets, PlayerAssets,
+    SpringBrickAssets, UiAssets, WallAssets,
 };
 use systems::{
     animate_systems::animate_system,
@@ -25,10 +27,11 @@ use systems::{
     physics_systems::{player_collision_system, velocity_system},
     player_systems::{
         animate_player_system, damaging_timer_system, enter_dead_system, enter_flying_system,
-        enter_grounded_system, leave_flying_system, leave_grounded_system,
+        enter_grounded_system, jumping_timer_system, leave_flying_system, leave_grounded_system,
         player_controller_system,
     },
     scoreboard_systems::add_score,
+    spring_brick_systems::{animate_spring_brick_system, spring_brick_trigger_enter_system},
     startup_systems::{
         play_background_sound, spawn_bricks, spawn_camera, spawn_ceiling, spawn_players,
         spawn_walls,
@@ -65,6 +68,7 @@ fn main() {
         .add_collection_to_loading_state::<_, WallAssets>(AppState::AssetLoading)
         .add_collection_to_loading_state::<_, UiAssets>(AppState::AssetLoading)
         .add_collection_to_loading_state::<_, CeilingAssets>(AppState::AssetLoading)
+        .add_collection_to_loading_state::<_, SpringBrickAssets>(AppState::AssetLoading)
         .add_plugins(
             DefaultPlugins
                 .set(ImagePlugin::default_nearest())
@@ -89,6 +93,7 @@ fn main() {
         .add_event::<CollisionEvent>()
         .add_event::<TriggerEnterEvent>()
         .add_event::<FakeBrickTriggerEnterEvent>()
+        .add_event::<SpringBrickTriggerEnterEvent>()
         .add_plugin(AudioPlugin)
         .add_plugin(bevy_inspector_egui::quick::WorldInspectorPlugin::new())
         .insert_resource(Scoreboard::default())
@@ -109,6 +114,7 @@ fn main() {
                 animate_system,
                 animate_player_system.before(animate_system),
                 animate_fake_brick_system.before(animate_system),
+                animate_spring_brick_system.before(animate_system),
                 add_score,
                 update_score_text.after(add_score),
                 update_health_text,
@@ -118,27 +124,41 @@ fn main() {
         .add_systems(
             (
                 userinput_system,
-                player_controller_system,
                 velocity_system,
-                enter_grounded_system.after(player_collision_system),
-                leave_grounded_system.after(player_collision_system),
-                enter_flying_system.after(player_collision_system),
-                leave_flying_system.after(player_collision_system),
+                fake_brick_trigger_enter_system.after(player_collision_system),
+                fake_brick_flip_system,
                 player_collision_system
                     .after(player_controller_system)
                     .after(velocity_system),
-                fake_brick_trigger_enter_system.after(player_collision_system),
-                fake_brick_flip_system,
-                damaging_timer_system,
                 player_nails_hitbox_system.after(damaging_timer_system),
                 player_ceiling_hitbox_system
                     .after(damaging_timer_system)
                     .after(player_collision_system),
-                celling_hurting_player_system.before(player_ceiling_hitbox_system),
+                celling_hurting_player_system
+                    .before(player_ceiling_hitbox_system)
+                    .before(player_collision_system),
                 enter_dead_system
                     .after(player_nails_hitbox_system)
                     .after(player_ceiling_hitbox_system),
             )
+                .distributive_run_if(|state: Res<State<AppState>>| state.0 == AppState::InGame)
+                .in_schedule(CoreSchedule::FixedUpdate),
+        )
+        .add_systems(
+            (
+                player_controller_system,
+                damaging_timer_system,
+                jumping_timer_system,
+                enter_grounded_system.after(player_collision_system),
+                leave_grounded_system.after(player_collision_system),
+                enter_flying_system.after(player_collision_system),
+                leave_flying_system.after(player_collision_system),
+            )
+                .distributive_run_if(|state: Res<State<AppState>>| state.0 == AppState::InGame)
+                .in_schedule(CoreSchedule::FixedUpdate),
+        )
+        .add_systems(
+            (spring_brick_trigger_enter_system.after(player_collision_system),)
                 .distributive_run_if(|state: Res<State<AppState>>| state.0 == AppState::InGame)
                 .in_schedule(CoreSchedule::FixedUpdate),
         )

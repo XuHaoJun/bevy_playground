@@ -4,12 +4,13 @@ use bevy_kira_audio::prelude::*;
 use crate::{
     components::{
         ceiling::CeilingBundle, fake_brick::FakeBrickBundle, nails_brick::NailsBrickBundle,
-        normal_brick::NormalBrickBundle, player::PlayerBundle, wall::WallBundle,
+        normal_brick::NormalBrickBundle, player::PlayerBundle, spring_brick::SpringBrickBundle,
+        wall::WallBundle,
     },
     constants::{CELLING_HEIGHT, IN_GAME_UI_APP_BAR_HEIGHT, WALL_HEIGHT, WALL_WIDTH},
     resources::{
         CeilingAssets, FakeBrickAssets, NailsBrickAssets, NormalBrickAssets, PlayerAssets,
-        UiAssets, WallAssets,
+        UiAssets, WallAssets, SpringBrickAssets,
     },
 };
 
@@ -34,6 +35,7 @@ pub fn spawn_bricks(
     normal_brick_assets: Res<NormalBrickAssets>,
     nails_brick_assets: Res<NailsBrickAssets>,
     fake_brick_assets: Res<FakeBrickAssets>,
+    spring_brick_assets: Res<SpringBrickAssets>,
 ) {
     let normal1_transform = Transform::from_xyz(0.0, -100.0, 0.0);
     commands.spawn(NormalBrickBundle::new(
@@ -46,6 +48,16 @@ pub fn spawn_bricks(
 
     let fake1_transform = Transform::from_xyz(-100.0, -200.0, 0.0);
     commands.spawn(FakeBrickBundle::new(fake1_transform, &fake_brick_assets));
+
+    let spring1_transform = Transform::from_xyz(-150.0, -280.0, 0.0);
+    commands.spawn(SpringBrickBundle::new(
+        spring1_transform,
+        &spring_brick_assets,
+    ));
+    commands.spawn(SpringBrickBundle::new(
+        Transform::from_xyz(150.0, -280.0, 0.0),
+        &spring_brick_assets,
+    ));
 }
 
 pub fn spawn_walls(

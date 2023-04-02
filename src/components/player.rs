@@ -184,6 +184,25 @@ pub struct Damaging {}
 #[derive(Component)]
 pub struct Dead {}
 
+#[derive(Component)]
+pub struct Jumping {}
+
+#[derive(Component)]
+pub struct JumpingTimer {
+    pub(crate) timer: Timer,
+}
+
+impl Default for JumpingTimer {
+    fn default() -> Self {
+        Self {
+            timer: Timer::new(
+                Duration::from_secs_f64(PHYSICS_DELTA * 12.5),
+                TimerMode::Once,
+            ),
+        }
+    }
+}
+
 #[derive(Component, Reflect)]
 pub struct DamagingTimer {
     pub(crate) timer: Timer,
@@ -191,7 +210,7 @@ pub struct DamagingTimer {
 
 impl Default for DamagingTimer {
     fn default() -> Self {
-        DamagingTimer {
+        Self {
             timer: Timer::new(
                 Duration::from_secs_f64(PHYSICS_DELTA * 75.0),
                 TimerMode::Once,
