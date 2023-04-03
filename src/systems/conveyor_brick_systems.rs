@@ -25,13 +25,24 @@ pub fn player_on_conveyor_system(
         })
         .collect();
 
-    for (entity, maybe_conveyor_moved) in &maybe_moved_query {
-        let maybe_on_conveyor_event = conveyor_events.iter().find(|x| x.a == entity);
+    for (player_entity, maybe_conveyor_moved) in &maybe_moved_query {
+        let maybe_on_conveyor_event = conveyor_events.iter().find(|x| x.a == player_entity);
         match maybe_on_conveyor_event {
             Some(event) => match maybe_conveyor_moved {
-                Some(_) => {}
+                Some(x) => {
+                    let conveyor_direction = conveyor_query.get(event.b).unwrap().direction;
+                    if x.direction != conveyor_direction {
+                        commands
+                            .entity(player_entity)
+                            .remove::<ConveyorMoved>()
+                            .insert(ConveyorMoved {
+                                direction: conveyor_direction,
+                            });
+                        audio.play(conveyor_brick_assets.hit.clone());
+                    }
+                }
                 None => {
-                    commands.entity(entity).insert(ConveyorMoved {
+                    commands.entity(player_entity).insert(ConveyorMoved {
                         direction: conveyor_query.get(event.b).unwrap().direction,
                     });
                     audio.play(conveyor_brick_assets.hit.clone());
@@ -40,7 +51,7 @@ pub fn player_on_conveyor_system(
             None => {
                 match maybe_conveyor_moved {
                     Some(_) => {
-                        commands.entity(entity).remove::<ConveyorMoved>();
+                        commands.entity(player_entity).remove::<ConveyorMoved>();
                     }
                     None => {}
                 };
