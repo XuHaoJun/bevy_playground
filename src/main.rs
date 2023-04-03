@@ -21,6 +21,7 @@ use resources::{
 use systems::{
     animate_systems::animate_system,
     ceiling_systems::{celling_hurting_player_system, player_ceiling_hitbox_system},
+    conveyor_brick_systems::player_on_conveyor_system,
     fake_brick_systems::{
         animate_fake_brick_system, fake_brick_flip_system, fake_brick_trigger_enter_system,
     },
@@ -38,7 +39,7 @@ use systems::{
         spawn_walls,
     },
     ui::in_game_ui_systems::{update_health_text, update_score_text},
-    userinput_system::userinput_system, conveyor_brick_systems::player_on_conveyor_system,
+    userinput_system::userinput_system,
 };
 
 mod components;
@@ -132,7 +133,6 @@ fn main() {
                 fake_brick_trigger_enter_system.after(player_collision_system),
                 fake_brick_flip_system,
                 player_collision_system
-                    .after(player_controller_system)
                     .after(velocity_system),
                 player_nails_hitbox_system.after(damaging_timer_system),
                 player_ceiling_hitbox_system
@@ -150,7 +150,7 @@ fn main() {
         )
         .add_systems(
             (
-                player_controller_system,
+                player_controller_system.after(userinput_system).before(player_collision_system),
                 damaging_timer_system,
                 jumping_timer_system,
                 enter_grounded_system.after(player_collision_system),

@@ -3,14 +3,19 @@ use bevy_kira_audio::prelude::*;
 
 use crate::{
     components::{
-        ceiling::CeilingBundle, conveyor_brick::{ConveyorBrickBundle, ConveyorDirection}, fake_brick::FakeBrickBundle,
-        nails_brick::NailsBrickBundle, normal_brick::NormalBrickBundle, player::PlayerBundle,
-        spring_brick::SpringBrickBundle, wall::WallBundle,
+        ceiling::CeilingBundle,
+        conveyor_brick::{ConveyorBrickBundle, ConveyorDirection},
+        fake_brick::FakeBrickBundle,
+        nails_brick::NailsBrickBundle,
+        normal_brick::NormalBrickBundle,
+        player::PlayerBundle,
+        spring_brick::SpringBrickBundle,
+        wall::WallBundle,
     },
     constants::{CELLING_HEIGHT, IN_GAME_UI_APP_BAR_HEIGHT, WALL_HEIGHT, WALL_WIDTH},
     resources::{
-        CeilingAssets, FakeBrickAssets, NailsBrickAssets, NormalBrickAssets, PlayerAssets,
-        SpringBrickAssets, UiAssets, WallAssets, ConveyorBrickAssets,
+        CeilingAssets, ConveyorBrickAssets, FakeBrickAssets, NailsBrickAssets, NormalBrickAssets,
+        PlayerAssets, SpringBrickAssets, UiAssets, WallAssets,
     },
 };
 
@@ -69,6 +74,15 @@ pub fn spawn_bricks(
         Transform::from_xyz(0.0, -330.0, 0.0),
         &conveyor_brick_assets,
     ));
+}
+
+fn spawn_bricks_2(
+    normal_brick_assets: Res<NormalBrickAssets>,
+    nails_brick_assets: Res<NailsBrickAssets>,
+    fake_brick_assets: Res<FakeBrickAssets>,
+    spring_brick_assets: Res<SpringBrickAssets>,
+    conveyor_brick_assets: Res<ConveyorBrickAssets>,
+) {
 }
 
 pub fn spawn_walls(
