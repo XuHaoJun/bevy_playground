@@ -1,3 +1,5 @@
+use std::ops::RangeInclusive;
+
 use bevy::{prelude::*, window::PrimaryWindow};
 use bevy_kira_audio::prelude::*;
 
@@ -76,13 +78,105 @@ pub fn spawn_bricks(
     ));
 }
 
-fn spawn_bricks_2(
+struct BrickProbability {
+    all: RangeInclusive<u32>,
+
+    normal: RangeInclusive<u32>,
+    fake: RangeInclusive<u32>,
+    nails: RangeInclusive<u32>,
+    conveyor: RangeInclusive<u32>,
+    spring: RangeInclusive<u32>,
+}
+
+#[derive(Copy, Clone, PartialEq, Eq)]
+enum BrickType {
+    Normal,
+    Fake,
+    Nails,
+    Conveyor,
+    Spring,
+}
+
+impl BrickProbability {
+    fn new() -> Self {
+        Self {
+            all: RangeInclusive::new(1, 100),
+            normal: RangeInclusive::new(1, 50),
+            fake: RangeInclusive::new(51, 60),
+            nails: RangeInclusive::new(61, 80),
+            conveyor: RangeInclusive::new(81, 90),
+            spring: RangeInclusive::new(91, 100),
+        }
+    }
+
+    fn sample(&self, rng: &mut fastrand::Rng) -> BrickType {
+        let n = rng.u32(self.all.clone());
+        let ranges = vec![
+            (BrickType::Normal, &self.normal),
+            (BrickType::Fake, &self.fake),
+            (BrickType::Nails, &self.nails),
+            (BrickType::Conveyor, &self.conveyor),
+            (BrickType::Spring, &self.spring),
+        ];
+        ranges.iter().find(|x| x.1.contains(&n)).unwrap().0
+    }
+}
+
+pub fn spawn_bricks_2(
+    mut commands: Commands,
+    primary_query: Query<&Window, With<PrimaryWindow>>,
     normal_brick_assets: Res<NormalBrickAssets>,
     nails_brick_assets: Res<NailsBrickAssets>,
     fake_brick_assets: Res<FakeBrickAssets>,
     spring_brick_assets: Res<SpringBrickAssets>,
     conveyor_brick_assets: Res<ConveyorBrickAssets>,
 ) {
+    let pos_rng = fastrand::Rng::with_seed(3);
+    let mut brick_type_rng = fastrand::Rng::with_seed(3);
+    let conveyor_dir_rng = fastrand::Rng::with_seed(4);
+
+    let brick_prob = BrickProbability::new();
+    if let Ok(window) = primary_query.get_single() {
+        let height = window.height().trunc() as i32;
+        let width = window.width().trunc() as i32;
+        let min_x = -1 * (width / 2);
+        let max_x = width / 2;
+        let min_y = -1 * (height / 2);
+        let max_y = height / 2;
+        for i in 0..30 {
+            let x = pos_rng.i32(min_x..max_x);
+            let y = pos_rng.i32(min_y..max_y);
+            let transform = Transform::from_xyz(x as f32, y as f32, 0.0);
+
+            let btype = brick_prob.sample(&mut brick_type_rng);
+            match btype {
+                BrickType::Normal => {
+                    commands.spawn(NormalBrickBundle::new(transform, &normal_brick_assets));
+                }
+                BrickType::Fake => {
+                    commands.spawn(FakeBrickBundle::new(transform, &fake_brick_assets));
+                }
+                BrickType::Nails => {
+                    commands.spawn(NailsBrickBundle::new(transform, &nails_brick_assets));
+                }
+                BrickType::Conveyor => {
+                    let dir = if conveyor_dir_rng.bool() {
+                        ConveyorDirection::Left
+                    } else {
+                        ConveyorDirection::Right
+                    };
+                    commands.spawn(ConveyorBrickBundle::new(
+                        dir,
+                        transform,
+                        &conveyor_brick_assets,
+                    ));
+                }
+                BrickType::Spring => {
+                    commands.spawn(SpringBrickBundle::new(transform, &spring_brick_assets));
+                }
+            }
+        }
+    }
 }
 
 pub fn spawn_walls(

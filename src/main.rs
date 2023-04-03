@@ -34,10 +34,7 @@ use systems::{
     },
     scoreboard_systems::add_score,
     spring_brick_systems::{animate_spring_brick_system, spring_brick_trigger_enter_system},
-    startup_systems::{
-        play_background_sound, spawn_bricks, spawn_camera, spawn_ceiling, spawn_players,
-        spawn_walls,
-    },
+    startup_systems::*,
     ui::in_game_ui_systems::{update_health_text, update_score_text},
     userinput_system::userinput_system,
 };
@@ -107,7 +104,8 @@ fn main() {
             (
                 play_background_sound,
                 spawn_camera,
-                spawn_bricks,
+                // spawn_bricks,
+                spawn_bricks_2,
                 spawn_players,
                 spawn_walls,
                 spawn_ceiling,
@@ -132,8 +130,7 @@ fn main() {
                 velocity_system,
                 fake_brick_trigger_enter_system.after(player_collision_system),
                 fake_brick_flip_system,
-                player_collision_system
-                    .after(velocity_system),
+                player_collision_system.after(velocity_system),
                 player_nails_hitbox_system.after(damaging_timer_system),
                 player_ceiling_hitbox_system
                     .after(damaging_timer_system)
@@ -150,7 +147,9 @@ fn main() {
         )
         .add_systems(
             (
-                player_controller_system.after(userinput_system).before(player_collision_system),
+                player_controller_system
+                    .after(userinput_system)
+                    .before(player_collision_system),
                 damaging_timer_system,
                 jumping_timer_system,
                 enter_grounded_system.after(player_collision_system),
