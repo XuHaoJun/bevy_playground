@@ -45,6 +45,7 @@ impl CeilingBundle {
 pub struct Ceiling {}
 
 #[derive(Component)]
+#[component(storage = "SparseSet")]
 pub struct CeilingHurting;
 
 #[derive(Component, Deref, DerefMut)]

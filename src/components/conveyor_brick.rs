@@ -72,6 +72,7 @@ pub struct ConveyorBrickAnimations {
 }
 
 #[derive(Component)]
+#[component(storage = "SparseSet")]
 pub struct ConveyorMoved {
     pub direction: ConveyorDirection,
 }

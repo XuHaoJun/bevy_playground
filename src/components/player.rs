@@ -174,18 +174,22 @@ impl Health {
 }
 
 #[derive(Component)]
+#[component(storage = "SparseSet")]
 pub struct Grounded {}
 
 #[derive(Component)]
+#[component(storage = "SparseSet")]
 pub struct Flying {}
 
 #[derive(Component)]
+#[component(storage = "SparseSet")]
 pub struct Damaging {}
 
 #[derive(Component)]
 pub struct Dead {}
 
 #[derive(Component)]
+#[component(storage = "SparseSet")]
 pub struct Jumping {}
 
 #[derive(Component)]
