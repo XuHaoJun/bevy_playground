@@ -10,3 +10,4 @@ pub mod conveyor_brick_systems;
 pub mod scoreboard_systems;
 pub mod ui;
 pub mod ceiling_systems;
+pub mod floor_stage_systems;

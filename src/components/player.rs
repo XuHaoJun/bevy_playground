@@ -208,7 +208,7 @@ impl Default for JumpingTimer {
     }
 }
 
-#[derive(Component, Reflect)]
+#[derive(Component)]
 pub struct DamagingTimer {
     pub(crate) timer: Timer,
 }

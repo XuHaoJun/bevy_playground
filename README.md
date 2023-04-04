@@ -28,6 +28,19 @@ cargo run
 # cargo watch -cx "run"
 ```
 
+## Android
+
+uncomment all code in `lib.rs`
+
+should turn off optimize, that cause build long time, i don't why.
+
+```sh
+ANDROID_SDK_ROOT="/home/<user>/Android/Sdk/" ANDROID_NDK_ROOT="/home/<user>/Android/Sdk/ndk/<version>" cargo apk run
+```
+
+egui still have problem(clipboard) cause android build failed, you can fork it and apply that patch.
+[Disable clipboard feature on Android](https://github.com/paulotten/egui/commit/68cdf23d93661c4c4508f8d83118eaba4055570a)
+
 ## References
 
-1. [ Extreme Bevy: Making a p2p web game with rust and rollback netcode ](https://johanhelsing.studio/posts/extreme-bevy)
+1. [Extreme Bevy: Making a p2p web game with rust and rollback netcode](https://johanhelsing.studio/posts/extreme-bevy)

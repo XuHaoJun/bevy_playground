@@ -3,6 +3,7 @@ use bevy_asset_loader::prelude::*;
 use bevy_kira_audio::AudioSource;
 
 pub mod scoreboard;
+pub mod floor_stage;
 
 #[derive(AssetCollection, Resource)]
 pub struct PlayerAssets {

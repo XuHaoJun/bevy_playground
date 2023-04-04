@@ -5,6 +5,7 @@ use bevy_kira_audio::prelude::*;
 
 use crate::{
     components::{
+        camera::MainCamera,
         ceiling::CeilingBundle,
         conveyor_brick::{ConveyorBrickBundle, ConveyorDirection},
         fake_brick::FakeBrickBundle,
@@ -24,7 +25,7 @@ use crate::{
 use super::ui::in_game_ui_systems::build_in_game_ui;
 
 pub fn spawn_camera(mut commands: Commands) {
-    commands.spawn(Camera2dBundle::default());
+    commands.spawn((Camera2dBundle::default(), MainCamera));
 }
 
 pub fn spawn_players(
@@ -131,7 +132,7 @@ pub fn spawn_bricks_2(
     spring_brick_assets: Res<SpringBrickAssets>,
     conveyor_brick_assets: Res<ConveyorBrickAssets>,
 ) {
-    let pos_rng = fastrand::Rng::with_seed(3);
+    let pos_rng = fastrand::Rng::with_seed(5);
     let mut brick_type_rng = fastrand::Rng::with_seed(3);
     let conveyor_dir_rng = fastrand::Rng::with_seed(4);
 
@@ -139,13 +140,13 @@ pub fn spawn_bricks_2(
     if let Ok(window) = primary_query.get_single() {
         let height = window.height().trunc() as i32;
         let width = window.width().trunc() as i32;
-        let min_x = -1 * (width / 2);
-        let max_x = width / 2;
-        let min_y = -1 * (height / 2);
+        let min_x = (-1 * (width / 2)) + 50;
+        let max_x = (width / 2) - 50;
+        // let min_y = -1 * (height / 2);
         let max_y = height / 2;
-        for i in 0..30 {
+        for i in 0..500 {
             let x = pos_rng.i32(min_x..max_x);
-            let y = pos_rng.i32(min_y..max_y);
+            let y = max_y - i * 55;
             let transform = Transform::from_xyz(x as f32, y as f32, 0.0);
 
             let btype = brick_prob.sample(&mut brick_type_rng);
@@ -157,7 +158,10 @@ pub fn spawn_bricks_2(
                     commands.spawn(FakeBrickBundle::new(transform, &fake_brick_assets));
                 }
                 BrickType::Nails => {
-                    commands.spawn(NailsBrickBundle::new(transform, &nails_brick_assets));
+                    let nail_transform = transform
+                        .clone()
+                        .with_translation(transform.translation + Vec3::new(0.0, 15.5, 0.0));
+                    commands.spawn(NailsBrickBundle::new(nail_transform, &nails_brick_assets));
                 }
                 BrickType::Conveyor => {
                     let dir = if conveyor_dir_rng.bool() {
@@ -221,6 +225,6 @@ pub fn play_background_sound(asset_server: Res<AssetServer>, audio: Res<Audio>) 
     let dir = "sounds/background";
     audio
         .play(asset_server.load(format!("{dir}/run_amok.ogg")))
-        .with_volume(0.2)
+        .with_volume(0.5)
         .looped();
 }

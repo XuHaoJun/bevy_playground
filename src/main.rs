@@ -89,7 +89,7 @@ fn main() {
                     ..default()
                 }),
         )
-        .register_type::<DamagingTimer>()
+        // .register_type::<DamagingTimer>()
         .add_event::<CollisionEvent>()
         .add_event::<TriggerEvent>()
         .add_event::<FakeBrickTriggerEnterEvent>()
@@ -97,7 +97,7 @@ fn main() {
         .add_event::<ConveyorBrickTriggerEnterEvent>()
         .add_event::<ConveyorBrickTriggerLeaveEvent>()
         .add_plugin(AudioPlugin)
-        .add_plugin(bevy_inspector_egui::quick::WorldInspectorPlugin::new())
+        // .add_plugin(bevy_inspector_egui::quick::WorldInspectorPlugin::new())
         .insert_resource(Scoreboard::default())
         .insert_resource(ScoreTimer::default())
         .add_systems(

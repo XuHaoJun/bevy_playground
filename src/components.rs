@@ -10,3 +10,4 @@ pub mod player;
 pub mod userinput;
 pub mod ui;
 pub mod ceiling;
+pub mod camera;
