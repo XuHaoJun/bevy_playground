@@ -15,7 +15,7 @@ use crate::{
     },
     events::physics_events::{
         CollisionEvent, ConveyorBrickTriggerEnterEvent, FakeBrickTriggerEnterEvent,
-        SpringBrickTriggerEnterEvent, TriggerEvent,
+        NormalBrickTriggerEnterEvent, SpringBrickTriggerEnterEvent, TriggerEvent,
     },
     resources::NormalBrickAssets,
     utils::physis_utils::{get_collider_size, get_collider_translation},
@@ -53,11 +53,10 @@ pub fn player_collision_system(
         Without<Player>,
     >,
     mut collision_events: EventWriter<CollisionEvent>,
+    mut normal_brick_trigger_enter_events: EventWriter<NormalBrickTriggerEnterEvent>,
     mut fake_brick_trigger_enter_events: EventWriter<FakeBrickTriggerEnterEvent>,
     mut spring_brick_trigger_enter_events: EventWriter<SpringBrickTriggerEnterEvent>,
     mut conveyor_brick_trigger_enter_events: EventWriter<ConveyorBrickTriggerEnterEvent>,
-    normal_brick_assets: Res<NormalBrickAssets>,
-    audio: Res<Audio>,
 ) {
     for (
         player_entity,
@@ -177,13 +176,20 @@ pub fn player_collision_system(
                     .any(|x| *x == other_entity);
 
                 if let Some(_) = maybe_normal_brick {
-                    match collision {
-                        Collision::Top => {
-                            if is_trigger_enter {
-                                audio.play(normal_brick_assets.hit.clone());
-                            }
-                        }
-                        _ => {}
+                    if is_trigger_enter {
+                        normal_brick_trigger_enter_events.send(NormalBrickTriggerEnterEvent(
+                            TriggerEvent {
+                                myself: other_entity,
+                                other: player_entity,
+                                collision: match collision {
+                                    Collision::Left => Collision::Left,
+                                    Collision::Right => Collision::Right,
+                                    Collision::Top => Collision::Top,
+                                    Collision::Bottom => Collision::Bottom,
+                                    Collision::Inside => Collision::Inside,
+                                },
+                            },
+                        ))
                     }
                 }
 

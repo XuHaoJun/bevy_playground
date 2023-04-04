@@ -11,7 +11,8 @@ use components::player::DamagingTimer;
 use constants::PHYSICS_DELTA;
 use events::physics_events::{
     CollisionEvent, ConveyorBrickTriggerEnterEvent, ConveyorBrickTriggerLeaveEvent,
-    FakeBrickTriggerEnterEvent, SpringBrickTriggerEnterEvent, TriggerEvent,
+    FakeBrickTriggerEnterEvent, NormalBrickTriggerEnterEvent, SpringBrickTriggerEnterEvent,
+    TriggerEvent,
 };
 use resources::{
     scoreboard::{ScoreTimer, Scoreboard},
@@ -26,6 +27,7 @@ use systems::{
         animate_fake_brick_system, fake_brick_flip_system, fake_brick_trigger_enter_system,
     },
     nails_brick_systems::player_nails_hitbox_system,
+    normal_brick_systems::normal_brick_trigger_enter_system,
     physics_systems::{player_collision_system, velocity_system},
     player_systems::{
         animate_player_system, damaging_timer_system, enter_dead_system, enter_flying_system,
@@ -92,6 +94,7 @@ fn main() {
         // .register_type::<DamagingTimer>()
         .add_event::<CollisionEvent>()
         .add_event::<TriggerEvent>()
+        .add_event::<NormalBrickTriggerEnterEvent>()
         .add_event::<FakeBrickTriggerEnterEvent>()
         .add_event::<SpringBrickTriggerEnterEvent>()
         .add_event::<ConveyorBrickTriggerEnterEvent>()
@@ -162,6 +165,7 @@ fn main() {
         )
         .add_systems(
             (
+                normal_brick_trigger_enter_system.after(player_collision_system),
                 spring_brick_trigger_enter_system.after(player_collision_system),
                 player_on_conveyor_system.after(player_collision_system),
             )

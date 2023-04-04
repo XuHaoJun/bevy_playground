@@ -18,6 +18,9 @@ pub struct TriggerEvent {
 pub struct FakeBrickTriggerEnterEvent(pub TriggerEvent);
 
 #[derive(Deref, DerefMut)]
+pub struct NormalBrickTriggerEnterEvent(pub TriggerEvent);
+
+#[derive(Deref, DerefMut)]
 pub struct SpringBrickTriggerEnterEvent(pub TriggerEvent);
 
 #[derive(Deref, DerefMut)]

@@ -201,7 +201,7 @@ impl Default for JumpingTimer {
     fn default() -> Self {
         Self {
             timer: Timer::new(
-                Duration::from_secs_f64(PHYSICS_DELTA * 12.5),
+                Duration::from_secs_f64(PHYSICS_DELTA * 16.0),
                 TimerMode::Once,
             ),
         }
