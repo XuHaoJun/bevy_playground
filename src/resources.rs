@@ -1,9 +1,21 @@
-use bevy::prelude::*;
+use bevy::{prelude::*, reflect::TypeUuid};
 use bevy_asset_loader::prelude::*;
 use bevy_kira_audio::AudioSource;
 
 pub mod floor_stage;
 pub mod scoreboard;
+
+#[derive(serde::Deserialize, TypeUuid)]
+#[uuid = "413be529-bfeb-41b3-9db0-4b8b380a2c46"]
+pub struct AppConfig {
+    pub signaling_server_addr: String
+}
+
+#[derive(AssetCollection, Resource)]
+pub struct AppConfigAssets {
+    #[asset(path = "configs/main.app_config.toml")]
+    pub main: Handle<AppConfig>,
+}
 
 #[derive(AssetCollection, Resource)]
 pub struct PlayerAssets {

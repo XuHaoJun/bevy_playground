@@ -5,11 +5,23 @@ use bevy_matchbox::MatchboxSocket;
 
 use crate::{
     constants::{AppState, GgrsConfig, INPUT_LEFT, INPUT_RIGHT},
-    resources::LocalPlayerHandle,
+    resources::{AppConfig, AppConfigAssets, LocalPlayerHandle},
 };
 
-pub fn start_matchbox_socket(mut commands: Commands) {
-    let room_url = "ws://127.0.0.1:3536/extreme_bevy?next=2";
+pub fn start_matchbox_socket(
+    mut commands: Commands,
+    app_config_assets: Res<AppConfigAssets>,
+    assets: Res<Assets<AppConfig>>,
+) {
+    let base_url = {
+        if let Some(config) = assets.get(&app_config_assets.main) {
+            config.signaling_server_addr.clone()
+        } else {
+            "ws://127.0.0.1:3536".to_string()
+        }
+    };
+    let room_url = format!("{}/quick_match?next=2", base_url);
+
     info!("connecting to matchbox server: {:?}", room_url);
     commands.insert_resource(MatchboxSocket::new_ggrs(room_url));
 }

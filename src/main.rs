@@ -1,9 +1,8 @@
 use std::time::Duration;
 
 use bevy::{
-    ecs::schedule::{FreeSystemSet, ScheduleLabel},
+    ecs::schedule::ScheduleLabel,
     prelude::*,
-    time::common_conditions::on_timer,
     window::{PresentMode, WindowResizeConstraints, WindowResolution},
 };
 use bevy_asset_loader::prelude::*;
@@ -19,8 +18,9 @@ use events::physics_events::{
 };
 use resources::{
     scoreboard::{ScoreTimer, Scoreboard},
-    CeilingAssets, ConveyorBrickAssets, FakeBrickAssets, InGameMode, InGameSetting,
-    NailsBrickAssets, NormalBrickAssets, PlayerAssets, SpringBrickAssets, UiAssets, WallAssets,
+    AppConfig, AppConfigAssets, CeilingAssets, ConveyorBrickAssets, FakeBrickAssets, InGameMode,
+    InGameSetting, NailsBrickAssets, NormalBrickAssets, PlayerAssets, SpringBrickAssets, UiAssets,
+    WallAssets,
 };
 use systems::{
     animate_systems::animate_system,
@@ -54,7 +54,7 @@ use systems::{
             spawn_matchmaking_ui_all, update_matching_elapsed_time,
         },
     },
-    userinput_system::{userinput_system, userinput_system_2},
+    userinput_system::{userinput_system_2},
 };
 
 mod components;
@@ -94,6 +94,7 @@ fn main() {
         .add_collection_to_loading_state::<_, CeilingAssets>(AppState::AssetLoading)
         .add_collection_to_loading_state::<_, SpringBrickAssets>(AppState::AssetLoading)
         .add_collection_to_loading_state::<_, ConveyorBrickAssets>(AppState::AssetLoading)
+        .add_collection_to_loading_state::<_, AppConfigAssets>(AppState::AssetLoading)
         .add_plugins(
             DefaultPlugins
                 .set(ImagePlugin::default_nearest())
@@ -114,6 +115,9 @@ fn main() {
                     ..default()
                 }),
         )
+        .add_plugin(bevy_common_assets::toml::TomlAssetPlugin::<AppConfig>::new(
+            &["app_config.toml"],
+        ))
         // .register_type::<DamagingTimer>()
         .add_event::<CollisionEvent>()
         .add_event::<TriggerEvent>()
@@ -144,11 +148,9 @@ fn main() {
         )
         .add_system(
             close_matchbox_socket
-                .run_if(|next_state: Res<NextState<AppState>>| {
-                    match &next_state.0 {
-                        Some(state) => *state != AppState::InGame,
-                        None => true
-                    }
+                .run_if(|next_state: Res<NextState<AppState>>| match &next_state.0 {
+                    Some(state) => *state != AppState::InGame,
+                    None => true,
                 })
                 .in_schedule(OnExit(AppState::Matchmaking)),
         )
