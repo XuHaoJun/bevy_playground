@@ -32,7 +32,8 @@ cargo run
 
 uncomment all code in `lib.rs`
 
-should turn off optimize, that cause build long time, i don't why.
+1. should turn off optimize, that cause build long time, i don't why.
+2. copy main.rs to lib.rs and add `#[bevy_main]` on `fn main`
 
 ```sh
 ANDROID_SDK_ROOT="/home/<user>/Android/Sdk/" ANDROID_NDK_ROOT="/home/<user>/Android/Sdk/ndk/<version>" cargo apk run
