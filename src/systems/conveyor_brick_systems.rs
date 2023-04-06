@@ -2,7 +2,10 @@ use bevy::{prelude::*, sprite::collide_aabb::Collision};
 use bevy_kira_audio::prelude::*;
 
 use crate::{
-    components::{conveyor_brick::*, player::Player},
+    components::{
+        conveyor_brick::*,
+        player::{Health, Player},
+    },
     events::physics_events::CollisionEvent,
     resources::ConveyorBrickAssets,
 };
@@ -10,7 +13,7 @@ use crate::{
 pub fn player_on_conveyor_system(
     mut commands: Commands,
     mut collision_events: EventReader<CollisionEvent>,
-    maybe_moved_query: Query<(Entity, Option<&ConveyorMoved>), With<Player>>,
+    mut maybe_moved_query: Query<(Entity, &mut Health, Option<&ConveyorMoved>), With<Player>>,
     conveyor_query: Query<&ConveyorBrick>,
     conveyor_brick_assets: Res<ConveyorBrickAssets>,
     audio: Res<Audio>,
@@ -25,26 +28,28 @@ pub fn player_on_conveyor_system(
         })
         .collect();
 
-    for (player_entity, maybe_conveyor_moved) in &maybe_moved_query {
+    for (player_entity, mut player_health, maybe_conveyor_moved) in &mut maybe_moved_query {
         let maybe_on_conveyor_event = conveyor_events.iter().find(|x| x.a == player_entity);
         match maybe_on_conveyor_event {
             Some(event) => match maybe_conveyor_moved {
-                Some(x) => {
-                    let conveyor_direction = conveyor_query.get(event.b).unwrap().direction;
-                    if x.direction != conveyor_direction {
-                        commands
-                            .entity(player_entity)
-                            .remove::<ConveyorMoved>()
-                            .insert(ConveyorMoved {
-                                direction: conveyor_direction,
-                            });
-                        audio.play(conveyor_brick_assets.hit.clone());
-                    }
-                }
+                // Some(x) => {
+                //     let conveyor_direction = conveyor_query.get(event.b).unwrap().direction;
+                //     if x.direction != conveyor_direction {
+                //         commands
+                //             .entity(player_entity)
+                //             .remove::<ConveyorMoved>()
+                //             .insert(ConveyorMoved {
+                //                 direction: conveyor_direction,
+                //             });
+                //         audio.play(conveyor_brick_assets.hit.clone());
+                //     }
+                // }
+                Some(_) => {}
                 None => {
                     commands.entity(player_entity).insert(ConveyorMoved {
                         direction: conveyor_query.get(event.b).unwrap().direction,
                     });
+                    player_health.value = player_health.clamp(player_health.value + 1);
                     audio.play(conveyor_brick_assets.hit.clone());
                 }
             },

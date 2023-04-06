@@ -27,7 +27,7 @@ pub struct PlayerBundle {
 }
 
 impl PlayerBundle {
-    pub fn new(handle: u32, transform: Transform, player_assets: &PlayerAssets) -> Self {
+    pub fn new(handle: usize, transform: Transform, player_assets: &PlayerAssets) -> Self {
         let animations = PlayerAnimations::default();
         let animation = animations.idle.clone();
         PlayerBundle {
@@ -68,7 +68,7 @@ impl BoxCollider {
 
 #[derive(Component, Default, Clone)]
 pub struct Player {
-    pub handle: u32,
+    pub handle: usize,
 }
 
 #[derive(Component, Clone)]
@@ -149,15 +149,21 @@ impl Default for PlayerAnimations {
     }
 }
 
-#[derive(Component)]
+#[derive(Component, Reflect)]
 pub struct Health {
     pub(crate) value: i32,
     pub(crate) max: i32,
 }
 
+impl Default for Health {
+    fn default() -> Self {
+        Health::new_player_health()
+    }
+}
+
 impl Health {
     pub fn new_player_health() -> Self {
-        Health { value: 10, max: 10 }
+        Health { value: 12, max: 12 }
     }
 
     pub fn clamp(&self, input: i32) -> i32 {

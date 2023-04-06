@@ -13,14 +13,13 @@ use crate::{
 pub fn build_in_game_ui(
     commands: &mut Commands,
     ui_assets: &Res<UiAssets>,
-    player_handles: Vec<u32>,
+    player_handles: Vec<usize>,
 ) {
     commands
         .spawn((
             InGameUi {},
             NodeBundle {
                 style: Style {
-                    // fill the entire window
                     size: Size::new(Val::Percent(100.0), Val::Px(32.0)),
                     flex_direction: FlexDirection::Row,
                     align_items: AlignItems::Center,

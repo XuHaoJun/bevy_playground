@@ -17,8 +17,8 @@ use crate::{
     },
     constants::{CELLING_HEIGHT, IN_GAME_UI_APP_BAR_HEIGHT, WALL_HEIGHT, WALL_WIDTH},
     resources::{
-        CeilingAssets, ConveyorBrickAssets, FakeBrickAssets, NailsBrickAssets, NormalBrickAssets,
-        PlayerAssets, SpringBrickAssets, UiAssets, WallAssets,
+        CeilingAssets, ConveyorBrickAssets, FakeBrickAssets, InGameSetting, NailsBrickAssets,
+        NormalBrickAssets, PlayerAssets, SpringBrickAssets, UiAssets, WallAssets,
     },
 };
 
@@ -30,12 +30,20 @@ pub fn spawn_camera(mut commands: Commands) {
 
 pub fn spawn_players(
     mut commands: Commands,
+    in_game_setting: Res<InGameSetting>,
     player_assets: Res<PlayerAssets>,
     ui_assets: Res<UiAssets>,
 ) {
-    let player1_transform = Transform::from_xyz(0.0, 200.0, 2.0);
-    commands.spawn(PlayerBundle::new(0, player1_transform, &player_assets));
-    build_in_game_ui(&mut commands, &ui_assets, vec![0]);
+    for handle in 0..in_game_setting.num_players {
+        let player1_transform = Transform::from_xyz(32.0 * handle as f32, 200.0, 2.0);
+        commands.spawn(PlayerBundle::new(handle, player1_transform, &player_assets));
+    }
+
+    build_in_game_ui(
+        &mut commands,
+        &ui_assets,
+        (0..in_game_setting.num_players).into_iter().collect(),
+    );
 }
 
 pub fn spawn_bricks(

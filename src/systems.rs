@@ -1,6 +1,6 @@
 pub mod userinput_system;
 pub mod player_systems;
-pub mod startup_systems;
+pub mod in_game_once_systems;
 pub mod animate_systems;
 pub mod physics_systems;
 pub mod normal_brick_systems;
@@ -12,3 +12,4 @@ pub mod scoreboard_systems;
 pub mod ui;
 pub mod ceiling_systems;
 pub mod floor_stage_systems;
+pub mod network_systems;

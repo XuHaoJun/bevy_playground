@@ -2,7 +2,6 @@ use bevy::{
     prelude::*,
     sprite::collide_aabb::{collide, Collision},
 };
-use bevy_kira_audio::prelude::*;
 
 use crate::{
     components::{
@@ -17,7 +16,6 @@ use crate::{
         CollisionEvent, ConveyorBrickTriggerEnterEvent, FakeBrickTriggerEnterEvent,
         NormalBrickTriggerEnterEvent, SpringBrickTriggerEnterEvent, TriggerEvent,
     },
-    resources::NormalBrickAssets,
     utils::physis_utils::{get_collider_size, get_collider_translation},
 };
 

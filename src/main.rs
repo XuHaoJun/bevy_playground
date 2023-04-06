@@ -1,14 +1,17 @@
 use std::time::Duration;
 
 use bevy::{
+    ecs::schedule::{FreeSystemSet, ScheduleLabel},
     prelude::*,
+    time::common_conditions::on_timer,
     window::{PresentMode, WindowResizeConstraints, WindowResolution},
 };
 use bevy_asset_loader::prelude::*;
+use bevy_ggrs::{GGRSPlugin, GGRSSchedule};
 use bevy_kira_audio::AudioPlugin;
 
-use components::player::DamagingTimer;
-use constants::PHYSICS_DELTA;
+use components::{player::Health, userinput::Userinput};
+use constants::{AppState, GgrsConfig, PHYSICS_DELTA};
 use events::physics_events::{
     CollisionEvent, ConveyorBrickTriggerEnterEvent, ConveyorBrickTriggerLeaveEvent,
     FakeBrickTriggerEnterEvent, NormalBrickTriggerEnterEvent, SpringBrickTriggerEnterEvent,
@@ -16,8 +19,8 @@ use events::physics_events::{
 };
 use resources::{
     scoreboard::{ScoreTimer, Scoreboard},
-    CeilingAssets, ConveyorBrickAssets, FakeBrickAssets, NailsBrickAssets, NormalBrickAssets,
-    PlayerAssets, SpringBrickAssets, UiAssets, WallAssets,
+    CeilingAssets, ConveyorBrickAssets, FakeBrickAssets, InGameMode, InGameSetting,
+    NailsBrickAssets, NormalBrickAssets, PlayerAssets, SpringBrickAssets, UiAssets, WallAssets,
 };
 use systems::{
     animate_systems::animate_system,
@@ -26,7 +29,11 @@ use systems::{
     fake_brick_systems::{
         animate_fake_brick_system, fake_brick_flip_system, fake_brick_trigger_enter_system,
     },
+    in_game_once_systems::*,
     nails_brick_systems::player_nails_hitbox_system,
+    network_systems::{
+        close_matchbox_socket, network_input_system, start_matchbox_socket, wait_for_players,
+    },
     normal_brick_systems::normal_brick_trigger_enter_system,
     physics_systems::{player_collision_system, velocity_system},
     player_systems::{
@@ -36,9 +43,18 @@ use systems::{
     },
     scoreboard_systems::add_score,
     spring_brick_systems::{animate_spring_brick_system, spring_brick_trigger_enter_system},
-    startup_systems::*,
-    ui::in_game_ui_systems::{update_health_text, update_score_text},
-    userinput_system::userinput_system,
+    ui::{
+        in_game_ui_systems::{update_health_text, update_score_text},
+        main_menu_ui_systems::{
+            despawn_main_menu_ui_all, interact_with_online_play_button, interact_with_quit_button,
+            interact_with_single_play_button, spawn_main_menu_ui_all,
+        },
+        matchmaking_ui_systems::{
+            despawn_matchmaking_ui_all, interact_with_back_main_menu_button,
+            spawn_matchmaking_ui_all, update_matching_elapsed_time,
+        },
+    },
+    userinput_system::{userinput_system, userinput_system_2},
 };
 
 mod components;
@@ -48,19 +64,26 @@ mod resources;
 mod systems;
 mod utils;
 
-#[derive(Clone, Eq, PartialEq, Debug, Hash, Default, States)]
-enum AppState {
-    #[default]
-    AssetLoading,
-    MainMenu,
-    InGame,
-}
+#[derive(Debug, Hash, PartialEq, Eq, Clone, SystemSet)]
+pub struct OnlineSet;
+
+#[derive(Debug, Hash, PartialEq, Eq, Clone, SystemSet)]
+#[system_set()]
+pub struct OfflineSet;
 
 fn main() {
-    App::new()
-        .add_state::<AppState>()
+    let mut app = App::new();
+
+    GGRSPlugin::<GgrsConfig>::new()
+        .with_input_system(network_input_system)
+        .register_rollback_component::<Transform>()
+        .register_rollback_component::<Userinput>()
+        .register_rollback_component::<Health>()
+        .build(&mut app);
+
+    app.add_state::<AppState>()
         .add_loading_state(
-            LoadingState::new(AppState::AssetLoading).continue_to_state(AppState::InGame),
+            LoadingState::new(AppState::AssetLoading).continue_to_state(AppState::MainMenu),
         )
         .add_collection_to_loading_state::<_, PlayerAssets>(AppState::AssetLoading)
         .add_collection_to_loading_state::<_, NormalBrickAssets>(AppState::AssetLoading)
@@ -103,6 +126,41 @@ fn main() {
         // .add_plugin(bevy_inspector_egui::quick::WorldInspectorPlugin::new())
         .insert_resource(Scoreboard::default())
         .insert_resource(ScoreTimer::default())
+        .insert_resource(InGameSetting::new_offline_1p())
+        .insert_resource(FixedTime::new(Duration::from_secs_f64(PHYSICS_DELTA)))
+        .add_system(spawn_main_menu_ui_all.in_schedule(OnEnter(AppState::MainMenu)))
+        .add_system(despawn_main_menu_ui_all.in_schedule(OnExit(AppState::MainMenu)))
+        .add_systems(
+            (
+                interact_with_single_play_button,
+                interact_with_online_play_button,
+                interact_with_quit_button,
+            )
+                .in_set(OnUpdate(AppState::MainMenu)),
+        )
+        .add_systems(
+            (spawn_matchmaking_ui_all, start_matchbox_socket)
+                .in_schedule(OnEnter(AppState::Matchmaking)),
+        )
+        .add_system(
+            close_matchbox_socket
+                .run_if(|next_state: Res<NextState<AppState>>| {
+                    match &next_state.0 {
+                        Some(state) => *state != AppState::InGame,
+                        None => true
+                    }
+                })
+                .in_schedule(OnExit(AppState::Matchmaking)),
+        )
+        .add_system(despawn_matchmaking_ui_all.in_schedule(OnExit(AppState::Matchmaking)))
+        .add_systems(
+            (
+                wait_for_players,
+                update_matching_elapsed_time,
+                interact_with_back_main_menu_button,
+            )
+                .in_set(OnUpdate(AppState::Matchmaking)),
+        )
         .add_systems(
             (
                 play_background_sound,
@@ -126,52 +184,117 @@ fn main() {
                 update_health_text,
             )
                 .in_set(OnUpdate(AppState::InGame)),
+        );
+
+    // app.configure_set(
+    //     OnlineSet
+    //         .run_if(|in_game_setting: Res<InGameSetting>| {
+    //             in_game_setting.mode == InGameMode::Online
+    //         })
+    //         .in_set(OnUpdate(AppState::InGame)),
+    // );
+
+    // app.configure_set(
+    //     OfflineSet
+    //         .run_if(|in_game_setting: Res<InGameSetting>| {
+    //             in_game_setting.mode == InGameMode::Offline
+    //         })
+    //         .in_set(OnUpdate(AppState::InGame)),
+    // );
+
+    // add_in_game_systems(&mut app, CoreSchedule::FixedUpdate, OfflineSet);
+    // add_in_game_systems(&mut app, GGRSSchedule, OnlineSet);
+    add_in_game_systems(&mut app, CoreSchedule::FixedUpdate, 0);
+    add_in_game_systems(&mut app, GGRSSchedule, 1);
+
+    app.run();
+}
+
+fn add_in_game_systems(
+    app: &mut App,
+    schedule: impl ScheduleLabel + Clone,
+    mode: u32,
+    // set: impl FreeSystemSet + Clone,
+) {
+    let systems = vec![
+        (
+            // userinput_system,
+            userinput_system_2,
+            velocity_system,
+            fake_brick_trigger_enter_system.after(player_collision_system),
+            fake_brick_flip_system,
+            player_collision_system.after(velocity_system),
+            player_nails_hitbox_system
+                .after(damaging_timer_system)
+                .ambiguous_with(player_on_conveyor_system),
+            player_ceiling_hitbox_system
+                .after(damaging_timer_system)
+                .after(player_collision_system)
+                .before(player_nails_hitbox_system)
+                .ambiguous_with(player_on_conveyor_system),
+            celling_hurting_player_system
+                .before(player_ceiling_hitbox_system)
+                .before(player_collision_system),
+            enter_dead_system
+                .after(player_nails_hitbox_system)
+                .after(player_ceiling_hitbox_system)
+                .after(player_on_conveyor_system),
         )
-        .add_systems(
-            (
-                userinput_system,
-                velocity_system,
-                fake_brick_trigger_enter_system.after(player_collision_system),
-                fake_brick_flip_system,
-                player_collision_system.after(velocity_system),
-                player_nails_hitbox_system.after(damaging_timer_system),
-                player_ceiling_hitbox_system
-                    .after(damaging_timer_system)
-                    .after(player_collision_system),
-                celling_hurting_player_system
-                    .before(player_ceiling_hitbox_system)
-                    .before(player_collision_system),
-                enter_dead_system
-                    .after(player_nails_hitbox_system)
-                    .after(player_ceiling_hitbox_system),
-            )
-                .distributive_run_if(|state: Res<State<AppState>>| state.0 == AppState::InGame)
-                .in_schedule(CoreSchedule::FixedUpdate),
+            .distributive_run_if(|state: Res<State<AppState>>| state.0 == AppState::InGame),
+        (
+            player_controller_system
+                .before(userinput_system_2)
+                // .after(userinput_system)
+                .before(player_collision_system)
+                .before(velocity_system),
+            damaging_timer_system,
+            jumping_timer_system,
+            enter_grounded_system
+                .after(player_collision_system)
+                .after(player_ceiling_hitbox_system),
+            leave_grounded_system
+                .after(player_collision_system)
+                .after(player_ceiling_hitbox_system),
+            enter_flying_system
+                .after(player_collision_system)
+                .after(player_ceiling_hitbox_system),
+            leave_flying_system
+                .after(player_collision_system)
+                .after(player_ceiling_hitbox_system),
         )
-        .add_systems(
-            (
-                player_controller_system
-                    .after(userinput_system)
-                    .before(player_collision_system),
-                damaging_timer_system,
-                jumping_timer_system,
-                enter_grounded_system.after(player_collision_system),
-                leave_grounded_system.after(player_collision_system),
-                enter_flying_system.after(player_collision_system),
-                leave_flying_system.after(player_collision_system),
-            )
-                .distributive_run_if(|state: Res<State<AppState>>| state.0 == AppState::InGame)
-                .in_schedule(CoreSchedule::FixedUpdate),
+            .distributive_run_if(|state: Res<State<AppState>>| state.0 == AppState::InGame),
+        (
+            normal_brick_trigger_enter_system
+                .after(player_collision_system)
+                .before(player_nails_hitbox_system)
+                .before(player_ceiling_hitbox_system)
+                .ambiguous_with(player_on_conveyor_system),
+            spring_brick_trigger_enter_system
+                .after(player_collision_system)
+                .before(player_nails_hitbox_system)
+                .before(normal_brick_trigger_enter_system)
+                .before(player_ceiling_hitbox_system)
+                .ambiguous_with(player_on_conveyor_system),
+            player_on_conveyor_system.after(player_collision_system),
         )
-        .add_systems(
-            (
-                normal_brick_trigger_enter_system.after(player_collision_system),
-                spring_brick_trigger_enter_system.after(player_collision_system),
-                player_on_conveyor_system.after(player_collision_system),
-            )
-                .distributive_run_if(|state: Res<State<AppState>>| state.0 == AppState::InGame)
-                .in_schedule(CoreSchedule::FixedUpdate),
-        )
-        .insert_resource(FixedTime::new(Duration::from_secs_f64(PHYSICS_DELTA)))
-        .run();
+            .distributive_run_if(|state: Res<State<AppState>>| state.0 == AppState::InGame),
+    ];
+    for x in systems {
+        // app.add_systems(x.in_set(set.clone()).in_schedule(schedule.clone()));
+        if mode == 0 {
+            app.add_systems(
+                x.distributive_run_if(|in_game_setting: Res<InGameSetting>| {
+                    in_game_setting.mode == InGameMode::Offline
+                })
+                .in_schedule(schedule.clone()),
+            );
+        } else {
+            app.add_systems(
+                x.distributive_run_if(|in_game_setting: Res<InGameSetting>| {
+                    in_game_setting.mode == InGameMode::Online
+                })
+                .in_schedule(schedule.clone()),
+            );
+        }
+    }
 }

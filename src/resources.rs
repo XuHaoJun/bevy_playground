@@ -2,8 +2,8 @@ use bevy::prelude::*;
 use bevy_asset_loader::prelude::*;
 use bevy_kira_audio::AudioSource;
 
-pub mod scoreboard;
 pub mod floor_stage;
+pub mod scoreboard;
 
 #[derive(AssetCollection, Resource)]
 pub struct PlayerAssets {
@@ -153,4 +153,44 @@ pub struct CeilingAssets {
     ))]
     #[asset(path = "ceiling.png")]
     pub sprite_sheet: Handle<TextureAtlas>,
+}
+
+#[derive(Resource)]
+pub struct LocalPlayerHandle(pub usize);
+
+#[derive(Clone, Eq, PartialEq, Debug, Hash, Default, Copy)]
+pub enum InGameMode {
+    #[default]
+    Offline,
+    Online,
+}
+
+#[derive(Resource, Default, Clone, Copy)]
+pub struct InGameSetting {
+    pub mode: InGameMode,
+    pub num_players: usize,
+}
+
+impl InGameSetting {
+    pub fn new_offline_1p() -> Self {
+        Self {
+            mode: InGameMode::Offline,
+            num_players: 1,
+        }
+    }
+
+    pub fn new_online_2p() -> Self {
+        Self {
+            mode: InGameMode::Online,
+            num_players: 2,
+        }
+    }
+
+    pub fn set_online_2p(&mut self) {
+        self.clone_from(&Self::new_online_2p());
+    }
+
+    pub fn set_offline_1p(&mut self) {
+        self.clone_from(&&Self::new_offline_1p());
+    }
 }
