@@ -29,14 +29,14 @@ pub fn player_controller_system(
     for (mut velocity, userinput, maybe_flying, maybe_conveyor_moved) in player_query.iter_mut() {
         let move_speed = {
             match maybe_flying {
-                Some(_) => 2.5,
+                Some(_) => 2.0,
                 None => 4.0,
             }
         };
         let conveyor_x_velocity = match maybe_conveyor_moved {
             Some(conveyor_moved) => match conveyor_moved.direction {
-                ConveyorDirection::Left => -2.5,
-                ConveyorDirection::Right => 2.5,
+                ConveyorDirection::Left => -2.0,
+                ConveyorDirection::Right => 2.0,
             },
             None => 0.0,
         };
