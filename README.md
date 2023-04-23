@@ -42,6 +42,16 @@ ANDROID_SDK_ROOT="/home/<user>/Android/Sdk/" ANDROID_NDK_ROOT="/home/<user>/Andr
 egui still have problem(clipboard) cause android build failed, you can fork it and apply that patch.
 [Disable clipboard feature on Android](https://github.com/paulotten/egui/commit/68cdf23d93661c4c4508f8d83118eaba4055570a)
 
+## Publish to github page
+
+after build out wasm-bindgen:
+
+```sh
+cp out/* .
+rm -r out
+git push origin gh-pages
+```
+
 ## References
 
 1. [Extreme Bevy: Making a p2p web game with rust and rollback netcode](https://johanhelsing.studio/posts/extreme-bevy)
