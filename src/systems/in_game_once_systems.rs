@@ -153,7 +153,6 @@ pub fn spawn_bricks_2(
         let width = window.width().trunc() as i32;
         let min_x = (-1 * (width / 2)) + 50;
         let max_x = (width / 2) - 50;
-        // let min_y = -1 * (height / 2);
         let max_y = height / 2;
         for i in 0..500 {
             let x = pos_rng.i32(min_x..max_x);

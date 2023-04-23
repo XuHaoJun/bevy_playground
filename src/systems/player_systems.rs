@@ -224,7 +224,6 @@ pub fn player_out_window_die_system(
         for (mut health, transform, collider) in player_query.iter_mut() {
             let x = transform.translation.x + collider.size.x / 2.0;
             let y = transform.translation.y + collider.size.y / 2.0;
-            println!("{} {} {} {}", x, y, height, width);
             if x < -width / 2.0 || x > width / 2.0 || y < -height / 2.0 || y > height / 2.0 {
                 health.value = health.clamp(0);
             }
