@@ -39,7 +39,7 @@ use systems::{
     player_systems::{
         animate_player_system, damaging_timer_system, enter_dead_system, enter_flying_system,
         enter_grounded_system, jumping_timer_system, leave_flying_system, leave_grounded_system,
-        player_controller_system,
+        player_controller_system, player_out_window_die_system,
     },
     scoreboard_systems::add_score,
     spring_brick_systems::{animate_spring_brick_system, spring_brick_trigger_enter_system},
@@ -280,6 +280,7 @@ fn add_in_game_systems(
                 .ambiguous_with(player_on_conveyor_system),
             player_on_conveyor_system.after(player_collision_system),
             wall_reset_position_system,
+            player_out_window_die_system.before(enter_dead_system),
         )
             .distributive_run_if(|state: Res<State<AppState>>| state.0 == AppState::InGame),
     ];

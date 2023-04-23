@@ -1,13 +1,13 @@
 use std::time::Duration;
 
-use bevy::prelude::*;
+use bevy::{prelude::*, window::PrimaryWindow};
 use bevy_kira_audio::prelude::*;
 
 use crate::{
     components::{
         animation::{Animation, AnimationState},
         conveyor_brick::{ConveyorDirection, ConveyorMoved},
-        physics::Velocity,
+        physics::{BoxCollider, Velocity},
         player::*,
         userinput::Userinput,
     },
@@ -210,6 +210,24 @@ pub fn jumping_timer_system(
         cooldown.timer.tick(Duration::from_secs_f64(PHYSICS_DELTA));
         if cooldown.timer.finished() {
             commands.entity(entity).remove::<(Jumping, JumpingTimer)>();
+        }
+    }
+}
+
+pub fn player_out_window_die_system(
+    primary_query: Query<&Window, With<PrimaryWindow>>,
+    mut player_query: Query<(&mut Health, &Transform, &BoxCollider), (Without<Dead>, With<Player>)>,
+) {
+    if let Ok(window) = primary_query.get_single() {
+        let height = window.height().trunc();
+        let width = window.width();
+        for (mut health, transform, collider) in player_query.iter_mut() {
+            let x = transform.translation.x + collider.size.x / 2.0;
+            let y = transform.translation.y + collider.size.y / 2.0;
+            println!("{} {} {} {}", x, y, height, width);
+            if x < -width / 2.0 || x > width / 2.0 || y < -height / 2.0 || y > height / 2.0 {
+                health.value = health.clamp(0);
+            }
         }
     }
 }
