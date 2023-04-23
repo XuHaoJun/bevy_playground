@@ -2,7 +2,7 @@ use bevy::prelude::*;
 
 #[derive(Resource, Default)]
 pub struct Scoreboard {
-    pub score: u64,
+    pub score: i32,
 }
 
 #[derive(Resource, Deref, DerefMut)]

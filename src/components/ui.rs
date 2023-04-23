@@ -4,6 +4,18 @@ use bevy::{prelude::*, time::Stopwatch};
 pub struct InGameUi {}
 
 #[derive(Component)]
+pub struct InGameResultMenuUi {}
+
+#[derive(Component)]
+pub struct InGameResultMenuScoreText {}
+
+#[derive(Component)]
+pub struct InGameResultBackToMainMenuButton {}
+
+#[derive(Component)]
+pub struct InGameResultPlayAgainButton {}
+
+#[derive(Component)]
 pub struct ScoreText {}
 
 #[derive(Component, Default)]

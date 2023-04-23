@@ -16,9 +16,7 @@ use crate::{
         spring_brick::SpringBrickBundle,
         wall::{WallBundle, WallPositionReset},
     },
-    constants::{
-        CELLING_HEIGHT, IN_GAME_UI_APP_BAR_HEIGHT, WALL_HEIGHT, WALL_WIDTH,
-    },
+    constants::{CELLING_HEIGHT, IN_GAME_UI_APP_BAR_HEIGHT, WALL_HEIGHT, WALL_WIDTH},
     resources::{
         CeilingAssets, ConveyorBrickAssets, FakeBrickAssets, InGameSetting, NailsBrickAssets,
         NormalBrickAssets, PlayerAssets, SpringBrickAssets, UiAssets, WallAssets,
@@ -26,6 +24,15 @@ use crate::{
 };
 
 use super::ui::in_game_ui_systems::build_in_game_ui;
+
+pub fn despawn_in_game_all(
+    mut commands: Commands,
+    all_entities_query: Query<Entity, Without<PrimaryWindow>>,
+) {
+    for entity in all_entities_query.iter() {
+        commands.entity(entity).despawn();
+    }
+}
 
 pub fn spawn_camera(mut commands: Commands) {
     commands.spawn((Camera2dBundle::default(), MainCamera));
@@ -265,4 +272,8 @@ pub fn play_background_sound(asset_server: Res<AssetServer>, audio: Res<Audio>) 
         .play(asset_server.load(format!("{dir}/run_amok.ogg")))
         .with_volume(0.5)
         .looped();
+}
+
+pub fn stop_background_sound(audio: Res<Audio>) {
+    audio.stop();
 }

@@ -11,10 +11,13 @@ use bevy_kira_audio::AudioPlugin;
 
 use components::{player::Health, userinput::Userinput};
 use constants::{AppState, GgrsConfig, PHYSICS_DELTA};
-use events::physics_events::{
-    CollisionEvent, ConveyorBrickTriggerEnterEvent, ConveyorBrickTriggerLeaveEvent,
-    FakeBrickTriggerEnterEvent, NormalBrickTriggerEnterEvent, SpringBrickTriggerEnterEvent,
-    TriggerEvent,
+use events::{
+    physics_events::{
+        CollisionEvent, ConveyorBrickTriggerEnterEvent, ConveyorBrickTriggerLeaveEvent,
+        FakeBrickTriggerEnterEvent, NormalBrickTriggerEnterEvent, SpringBrickTriggerEnterEvent,
+        TriggerEvent,
+    },
+    player_events::{PlayerEnterDeadEvent, PlayerLeaveDeadEvent},
 };
 use resources::{
     scoreboard::{ScoreTimer, Scoreboard},
@@ -41,7 +44,7 @@ use systems::{
         enter_grounded_system, jumping_timer_system, leave_flying_system, leave_grounded_system,
         player_controller_system, player_out_window_die_system,
     },
-    scoreboard_systems::add_score,
+    scoreboard_systems::{add_score, init_score},
     spring_brick_systems::{animate_spring_brick_system, spring_brick_trigger_enter_system},
     ui::{
         in_game_ui_systems::{update_health_text, update_score_text},
@@ -127,6 +130,8 @@ fn main() {
         .add_event::<SpringBrickTriggerEnterEvent>()
         .add_event::<ConveyorBrickTriggerEnterEvent>()
         .add_event::<ConveyorBrickTriggerLeaveEvent>()
+        .add_event::<PlayerEnterDeadEvent>()
+        .add_event::<PlayerLeaveDeadEvent>()
         .add_plugin(AudioPlugin)
         // .add_plugin(bevy_inspector_egui::quick::WorldInspectorPlugin::new())
         .insert_resource(Scoreboard::default())
@@ -173,8 +178,12 @@ fn main() {
                 spawn_players,
                 spawn_walls,
                 spawn_ceiling,
+                init_score,
             )
                 .in_schedule(OnEnter(AppState::InGame)),
+        )
+        .add_systems(
+            (despawn_in_game_all, stop_background_sound).in_schedule(OnExit(AppState::InGame)),
         )
         .add_systems(
             (
@@ -182,9 +191,23 @@ fn main() {
                 animate_player_system.before(animate_system),
                 animate_fake_brick_system.before(animate_system),
                 animate_spring_brick_system.before(animate_system),
+            )
+                .in_set(OnUpdate(AppState::InGame)),
+        )
+        .add_systems(
+            (
                 add_score,
                 update_score_text.after(add_score),
                 update_health_text,
+            )
+                .in_set(OnUpdate(AppState::InGame)),
+        )
+        .add_systems(
+            (
+                systems::ui::in_game_ui_systems::update_game_result_score_text,
+                systems::ui::in_game_ui_systems::interact_play_again_button,
+                systems::ui::in_game_ui_systems::interact_back_to_main_menu_button,
+                systems::ui::in_game_ui_systems::spawn_in_game_result_menu_if_end,
             )
                 .in_set(OnUpdate(AppState::InGame)),
         );

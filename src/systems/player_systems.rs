@@ -12,6 +12,7 @@ use crate::{
         userinput::Userinput,
     },
     constants::PHYSICS_DELTA,
+    events::player_events::PlayerEnterDeadEvent,
     resources::PlayerAssets,
 };
 
@@ -176,14 +177,18 @@ pub fn leave_flying_system(
 
 pub fn enter_dead_system(
     mut commands: Commands,
-    health_query: Query<(Entity, &Health), (Without<Dead>, With<Player>)>,
+    player_query: Query<(Entity, &Player, &Health), Without<Dead>>,
     player_assets: Res<PlayerAssets>,
     audio: Res<Audio>,
+    mut dead_events: EventWriter<PlayerEnterDeadEvent>,
 ) {
-    for (entity, health) in health_query.iter() {
+    for (entity, player, health) in player_query.iter() {
         if health.value <= 0 {
             commands.entity(entity).insert(Dead {});
             audio.play(player_assets.die.clone());
+            dead_events.send(PlayerEnterDeadEvent {
+                handle: player.handle,
+            })
         }
     }
 }

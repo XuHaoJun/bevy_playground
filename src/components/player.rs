@@ -1,6 +1,6 @@
 use benimator::FrameRate;
 use bevy::prelude::*;
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
 
 use super::{
     animation::AnimationState,
@@ -12,6 +12,7 @@ use crate::{components::animation::Animation, constants::PHYSICS_DELTA, resource
 #[derive(Bundle)]
 pub struct PlayerBundle {
     pub player: Player,
+    pub score: PlayerScore,
     pub health: Health,
 
     pub spirtes: SpriteSheetBundle,
@@ -32,6 +33,7 @@ impl PlayerBundle {
         let animation = animations.idle.clone();
         PlayerBundle {
             player: Player { handle },
+            score: PlayerScore { score: 0 },
             health: Health::new_player_health(),
 
             spirtes: SpriteSheetBundle {
@@ -69,6 +71,11 @@ impl BoxCollider {
 #[derive(Component, Default, Clone)]
 pub struct Player {
     pub handle: usize,
+}
+
+#[derive(Component, Default, Clone)]
+pub struct PlayerScore {
+    pub score: i32,
 }
 
 #[derive(Component, Clone)]
