@@ -302,8 +302,10 @@ fn add_in_game_systems(
                 .before(player_ceiling_hitbox_system)
                 .ambiguous_with(player_on_conveyor_system),
             player_on_conveyor_system.after(player_collision_system),
-            wall_reset_position_system,
-            player_out_window_die_system.before(enter_dead_system),
+            wall_reset_position_system.ambiguous_with_all(),
+            player_out_window_die_system
+                .before(enter_dead_system)
+                .ambiguous_with_all(),
         )
             .distributive_run_if(|state: Res<State<AppState>>| state.0 == AppState::InGame),
     ];
