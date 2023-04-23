@@ -54,7 +54,8 @@ use systems::{
             spawn_matchmaking_ui_all, update_matching_elapsed_time,
         },
     },
-    userinput_system::{userinput_system_2},
+    userinput_system::userinput_system_2,
+    wall_systems::wall_reset_position_system,
 };
 
 mod components;
@@ -278,6 +279,7 @@ fn add_in_game_systems(
                 .before(player_ceiling_hitbox_system)
                 .ambiguous_with(player_on_conveyor_system),
             player_on_conveyor_system.after(player_collision_system),
+            wall_reset_position_system,
         )
             .distributive_run_if(|state: Res<State<AppState>>| state.0 == AppState::InGame),
     ];

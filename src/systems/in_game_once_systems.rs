@@ -11,11 +11,14 @@ use crate::{
         fake_brick::FakeBrickBundle,
         nails_brick::NailsBrickBundle,
         normal_brick::NormalBrickBundle,
+        physics::Velocity,
         player::PlayerBundle,
         spring_brick::SpringBrickBundle,
-        wall::WallBundle,
+        wall::{WallBundle, WallPositionReset},
     },
-    constants::{CELLING_HEIGHT, IN_GAME_UI_APP_BAR_HEIGHT, WALL_HEIGHT, WALL_WIDTH},
+    constants::{
+        CELLING_HEIGHT, IN_GAME_UI_APP_BAR_HEIGHT, WALL_HEIGHT, WALL_WIDTH,
+    },
     resources::{
         CeilingAssets, ConveyorBrickAssets, FakeBrickAssets, InGameSetting, NailsBrickAssets,
         NormalBrickAssets, PlayerAssets, SpringBrickAssets, UiAssets, WallAssets,
@@ -197,20 +200,48 @@ pub fn spawn_walls(
     wall_assets: Res<WallAssets>,
 ) {
     if let Ok(window) = primary_query.get_single() {
-        let height = window.height();
         let width = window.width();
-        let right_transform = Transform::from_xyz(
-            width / 2.0 - (WALL_WIDTH / 2.0),
-            height / 2.0 - (WALL_HEIGHT / 2.0) - IN_GAME_UI_APP_BAR_HEIGHT,
-            0.0,
-        );
-        commands.spawn(WallBundle::new(right_transform, &wall_assets));
-        let left_transform = Transform::from_xyz(
+
+        let right_transform = Transform::from_xyz(width / 2.0 - (WALL_WIDTH / 2.0), 0.0, 0.0);
+        commands
+            .spawn(WallBundle::new(right_transform, &wall_assets))
+            .insert(Velocity(Vec2::new(0.0, 1.0)))
+            .insert(WallPositionReset {
+                restore_position: right_transform.translation.clone(),
+                target_y: WALL_HEIGHT / 2.0,
+            });
+
+        let right_transform2 =
+            Transform::from_xyz(width / 2.0 - (WALL_WIDTH / 2.0), -WALL_HEIGHT, 0.0);
+        commands
+            .spawn(WallBundle::new(right_transform2, &wall_assets))
+            .insert(Velocity(Vec2::new(0.0, 1.0)))
+            .insert(WallPositionReset {
+                restore_position: right_transform2.translation.clone(),
+                target_y: 0.0,
+            });
+
+        let left_transform = Transform::from_xyz(-1.0 * right_transform.translation.x, 0.0, 0.0);
+        commands
+            .spawn(WallBundle::new(left_transform, &wall_assets))
+            .insert(Velocity(Vec2::new(0.0, 1.0)))
+            .insert(WallPositionReset {
+                restore_position: left_transform.translation.clone(),
+                target_y: WALL_HEIGHT / 2.0,
+            });
+
+        let left_transform2 = Transform::from_xyz(
             -1.0 * right_transform.translation.x,
-            right_transform.translation.y,
+            right_transform2.translation.y,
             0.0,
         );
-        commands.spawn(WallBundle::new(left_transform, &wall_assets));
+        commands
+            .spawn(WallBundle::new(left_transform2, &wall_assets))
+            .insert(Velocity(Vec2::new(0.0, 1.0)))
+            .insert(WallPositionReset {
+                restore_position: left_transform2.translation.clone(),
+                target_y: 0.0,
+            });
     }
 }
 

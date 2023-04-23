@@ -13,3 +13,4 @@ pub mod ui;
 pub mod ceiling_systems;
 pub mod floor_stage_systems;
 pub mod network_systems;
+pub mod wall_systems;

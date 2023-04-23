@@ -41,3 +41,9 @@ impl WallBundle {
 
 #[derive(Component)]
 pub struct Wall {}
+
+#[derive(Component)]
+pub struct WallPositionReset {
+    pub target_y: f32,
+    pub restore_position: Vec3,
+}
