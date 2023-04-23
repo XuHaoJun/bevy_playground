@@ -4,14 +4,65 @@
   // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
   "version": "0.2.0",
   "configurations": [
-  
+    // this config bypasses waiting for debugger attachment, increasing speed
+    {
+      "name": "Quick Launch",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "cargo run --features dev"
+    },
     {
       "type": "lldb",
       "request": "launch",
       "name": "Debug",
-      "program": "${workspaceFolder}/target/debug/${workspaceFolderBasename}",
+      "cargo": {
+        "args": [
+          "build",
+          "--bin=bevy_playground",
+          "--package=bevy_playground",
+          "--features",
+          "dev"
+        ],
+        "filter": {
+          "name": "bevy_playground",
+          "kind": "bin"
+        }
+      },
       "args": [],
-      "cwd": "${workspaceFolder}"
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "CARGO_MANIFEST_DIR": "${workspaceFolder}"
+      },
+      "linux": {
+        "env": {
+          "LD_LIBRARY_PATH": "${env:LD_LIBRARY_PATH}:${workspaceFolder}/target/debug:${workspaceFolder}/target/debug/deps:${env:HOME}/.rustup/toolchains/nightly-x86_64-unknown-linux-gnu/lib"
+        }
+      }
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug unit tests",
+      "cargo": {
+        "args": [
+          "test",
+          "--no-run",
+          "--bin=bevy_game",
+          "--package=bevy_game",
+          "--features",
+          "dev"
+        ],
+        "filter": {
+          "name": "bevy_game",
+          "kind": "bin"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "CARGO_MANIFEST_DIR": "${workspaceFolder}",
+        "LD_LIBRARY_PATH": "${env:LD_LIBRARY_PATH}:${workspaceFolder}/target/debug:${workspaceFolder}/target/debug/deps:${env:HOME}/.rustup/toolchains/nightly-x86_64-unknown-linux-gnu/lib"
+      }
     }
   ]
 }
