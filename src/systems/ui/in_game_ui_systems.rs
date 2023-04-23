@@ -64,6 +64,14 @@ pub fn build_in_game_ui(
                 ));
             }
 
+            builder.spawn(NodeBundle {
+                style: Style {
+                    flex_grow: 1.0,
+                    ..Default::default()
+                },
+                ..Default::default()
+            });
+
             builder.spawn((
                 TextBundle {
                     text: Text {
